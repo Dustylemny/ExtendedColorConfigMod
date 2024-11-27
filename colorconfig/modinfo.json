@@ -1,0 +1,10 @@
+{
+	"id": "dusty.colorconfig",
+	"name": "Extended Color Config",
+	"version": "1.0.6",
+	"hide_version": false,
+	"authors": "DustyLem0n",
+	"description": " Adds new sliders and configs in both Main Select Menu and Jolly-Coop Menu like RGB Sliders for more intuitivity!",
+	"checksum_override_version": false,
+	"tags": ["Tools", "Accessibility"]
+}
