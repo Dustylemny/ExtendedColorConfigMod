@@ -1,9 +1,13 @@
 ﻿using System;
 using System.Globalization;
+using System.IO;
+using System.Collections.Generic;
+using System.Linq;
 using Menu;
 using RWCustom;
 using UnityEngine;
 using static ColorConfig.ColConversions;
+using System.Collections;
 
 namespace ColorConfig
 {
@@ -23,6 +27,12 @@ namespace ColorConfig
         public static Slider.SliderID SatHSV = new("SatHSV", true);
         public static Slider.SliderID ValHSV = new("ValHSV", true);
 
+        public static Slider.SliderID[] RGBSliderIDS { get => new[] { RedRGB, GreenRGB, BlueRGB }; }
+        public static Slider.SliderID[] HSVSliderIDS { get => new[] { HueHSV, SatHSV, ValHSV }; }
+        
+        public static string[] HSLNames { get => new[] { hue, sat, lit }; }
+        public static string[] RGBNames { get => new[] { red, green, blue }; }
+        public static string[] HSVNames { get => new[] { hue, sat, value }; }
         public const string red = "RED";
         public const string green = "GREEN";
         public const string blue = "BLUE";
@@ -46,7 +56,6 @@ namespace ColorConfig
     }
     public static class SmallUtils
     {
-
         public static Color RGBClamp01(Color color)
         {
             return new(Mathf.Clamp01(color.r), Mathf.Clamp01(color.g), Mathf.Clamp01(color.b));
@@ -111,7 +120,7 @@ namespace ColorConfig
                 return HSL2HSV(hsl);
             }
             hsl = HOOClamp(iii, MenuToolObj.hslClampMin, MenuToolObj.hslClampMax);
-            return HOOClamp(hsl);
+            return hsl;
         }
         public static Vector3 HOOClamp(Vector3 value, Vector3 min = default, Vector3 max = default)
         {
@@ -129,7 +138,6 @@ namespace ColorConfig
         {
             return $"{hsl.x},{hsl.y},{hsl.z}";
         }
-
     }
     public static class ColConversions
     {
