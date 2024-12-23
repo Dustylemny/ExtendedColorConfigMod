@@ -1,16 +1,14 @@
-//for slugcat display in story menu, and if you have a specific texture to add to your slugcat.
+//for slugcat display in story menu, and if you have a specific texture to add to your slugcat. this mod automatically tries to search it
 
-//Do note 
-[this mod tries to find other body parts by searching for 
+//tries to find
 (first bodypart)"illustrations/SLUGCATNAME_pup_off.png", 
 (second bodypart)"illustrations/SLUGCATNAME_face_pup_off.png",
 (Third body part)"illustrations/SLUGCATNAME_unique_pup_off.png" 
-or (Other body parts)"illustrations/SLUGCATNAME_BodyPartName_pup_off.png", 
+or (other body parts)"illustrations/SLUGCATNAME_BodyPartName_pup_off.png", 
 
 (if custom slugcat first body part and second body part is not found, it will automatically default to "illustrations/pup_off.png" and "illustrations/face_pup_off.png", the rest will be defaulted to "illustrations/colorconfig_showcasesquare")
 
-so FOR SIMPLICITY name your files as what the mod tries to find]
-
+so FOR SIMPLICITY name your files as what the mod tries to find first]
 
 //else if you want to add your own custom name, make sure to type this format in one line
 //vvvvvvvv
@@ -23,4 +21,4 @@ so FOR SIMPLICITY name your files as what the mod tries to find]
 
 White:Body|FILENAMEHERE,Eyes|FILENAMEHERE2
 
-Yellow:Body|Scenes/FILENAMEHERE,Eyes|Scenes/Whyputeminscenes/FILENAMEHERE
+Yellow:Body|DIRECTORYNAME/FILENAMEHERE,Eyes|DIRECTORYNAME/SUBDIRECTORYNAME/FILENAMEHERE
