@@ -2,9 +2,9 @@ For slugcat display in story menu, and if you have a specific texture to add to 
 
 Tries to find
 (first bodypart)"illustrations/SLUGCATNAME_pup_off.png", 
-(second bodypart)"illustrations/SLUGCATNAME_face_pup_off.png",
-(Third body part)"illustrations/SLUGCATNAME_unique_pup_off.png" 
-OR (other body parts)"illustrations/SLUGCATNAME_BodyPartName_pup_off.png", 
+(second bodypart)"illustrations/face_SLUGCATNAME_pup_off.png",
+(Third body part)"illustrations/unique_SLUGCATNAME_pup_off.png" 
+OR (other body parts)"illustrations/BODYNAME_SLUGCATNAME_pup_off.png", 
 
 IF custom slugcat first body part and second body part is not found, it will automatically default to "illustrations/pup_off.png" and "illustrations/face_pup_off.png", the rest will be defaulted to "illustrations/colorconfig_showcasesquare"
 
