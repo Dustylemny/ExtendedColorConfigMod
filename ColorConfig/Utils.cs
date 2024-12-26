@@ -8,6 +8,9 @@ using RWCustom;
 using UnityEngine;
 using static ColorConfig.ColConversions;
 using System.Collections;
+using BepInEx;
+using static System.Net.Mime.MediaTypeNames;
+using System.Reflection;
 
 namespace ColorConfig
 {
@@ -22,16 +25,25 @@ namespace ColorConfig
         public static Slider.SliderID SatHSV = new("SatHSV", true);
         public static Slider.SliderID ValHSV = new("ValHSV", true);
 
+        public static Slider.SliderID HueHSY = new("HueHSY", true);
+        public static Slider.SliderID SatHSY = new("SatHSY", true);
+        public static Slider.SliderID LumaHSY = new("LumaHSY", true);
+
         public static Slider.SliderID[] RGBSliderIDS { get => new[] { RedRGB, GreenRGB, BlueRGB }; }
         public static Slider.SliderID[] HSVSliderIDS { get => new[] { HueHSV, SatHSV, ValHSV }; }
-        
+
+        public static Slider.SliderID[] HSYSliderIDS { get => new[] { HueHSY, SatHSY, LumaHSY }; }
+
         public static string[] HSLNames { get => new[] { hue, sat, lit }; }
         public static string[] RGBNames { get => new[] { red, green, blue }; }
         public static string[] HSVNames { get => new[] { hue, sat, value }; }
+        public static string[] HSYNames { get => new[] { hue, sat, luma }; }
+
         public const string red = "RED";
         public const string green = "GREEN";
         public const string blue = "BLUE";
         public const string value = "VALUE";
+        public const string luma = "LUMA";
 
         public const string hue = "HUE";
         public const string sat = "SAT";
@@ -61,10 +73,28 @@ namespace ColorConfig
                 }
                 return pendingHSL;
             }
+            public static Vector3 FixHexSliderWonkiness(Vector3 hexHSL, Vector3 currentHSL)
+            {
+                //stops sliders from changing if anything changes but hex code never changes
+                if (HSL2Hex(hexHSL) == HSL2Hex(currentHSL))
+                {
+                    return currentHSL;
+                }
+                if (HSL2Hex(hexHSL) == HSL2Hex(new(currentHSL.x, hexHSL.y, currentHSL.z)))
+                {
+                    return new(currentHSL.x, hexHSL.y, currentHSL.z);
+                }
+                return hexHSL;
+            }
         }
+
         public static T GetValueOrDefault<T>(this T[] array, int index, T defaultValue)
         {
             return (array != null && array.Length > index) ? array[index] : defaultValue;
+        }
+        public static string[] FindFilePaths(string directoryName, string fileFormat = "", bool directories = false, bool includeAll = false)
+        {
+            return AssetManager.ListDirectory(directoryName, directories, includeAll).Where(x => fileFormat == null || fileFormat == "" || x.EndsWith(fileFormat)).ToArray();
         }
         public static Color RGBClamp01(Color color)
         {
@@ -79,20 +109,9 @@ namespace ColorConfig
             return new(color.r, color.g, color.b);
         }
         public static Vector3 HSL2Vector3(this HSLColor hSLColor) => new(hSLColor.hue, hSLColor.saturation, hSLColor.lightness);
+        public static Vector3 RXHSl2Vector3(this RXColorHSL colorHSL) => new(colorHSL.h, colorHSL.s, colorHSL.l);
         public static HSLColor Vector32HSL(this Vector3 hsl) => new(hsl.x, hsl.y, hsl.z);
-        public static Vector3 FixHexSliderWonkiness(Vector3 hexHSL, Vector3 currentHSL)
-        {
-            //stops sliders from changing if anything changes but hex code never changes
-            if (HSL2Hex(hexHSL) == HSL2Hex(currentHSL))
-            {
-                return currentHSL;
-            }
-            if (HSL2Hex(hexHSL) == HSL2Hex(new(currentHSL.x, hexHSL.y, currentHSL.z)))
-            {
-                return new(currentHSL.x, hexHSL.y, currentHSL.z);
-            }
-            return hexHSL;
-        }
+        public static RXColorHSL Vector32RXHSL(this Vector3 hsl) => new(hsl.x, hsl.y, hsl.z);
         public static Vector3 SlugcatSelectMenuHSL(this SlugcatSelectMenu selM)
         {
             Vector3 color = new(1, 1, 1);
@@ -179,6 +198,13 @@ namespace ColorConfig
         {
             return Custom.HSL2RGB(hsl.x == 1? 0 : hsl.x, hsl.y, hsl.z);
         }
+        //2HSL
+        public static Vector3 HSV2HSL(Vector3 hsv)
+        {
+            float lit = hsv.z * (1 - (hsv.y / 2));
+            float sat = lit == 0 || lit == 1? 0 : (hsv.z - lit) / Mathf.Min(lit, 1 - lit);
+            return new(hsv.x, sat, lit);
+        }
         //2HSV
         public static Vector3 RGB2HSV(Color color)
         {
@@ -192,21 +218,14 @@ namespace ColorConfig
 
             return new(hsl.x, sat, val);
         }
-        //2HSL
-        public static Vector3 HSV2HSL(Vector3 hsv)
-        {
-            float lit = hsv.z * (1 - (hsv.y / 2));
-            float sat = lit == 0 || lit == 1? 0 : (hsv.z - lit) / Mathf.Min(lit, 1 - lit);
-            return new(hsv.x, sat, lit);
-        }
         //2Hex
         public static string RGB2Hex(this Color color)
         {
             return ColorUtility.ToHtmlStringRGB(color);
         }
-        public static string HSL2Hex(Vector3 hsl, out Color color)
+        public static string HSV2Hex(Vector3 hsv)
         {
-            color = HSL2RGB(hsl);
+            Color color = HSV2RGB(hsv);
             return ColorUtility.ToHtmlStringRGB(color);
         }
         public static string HSL2Hex(Vector3 hsl)
@@ -214,7 +233,9 @@ namespace ColorConfig
             Color color = HSL2RGB(hsl);
             return ColorUtility.ToHtmlStringRGB(color);
         }
-        public static readonly float segment = (1f / 6f);
+
+        public static readonly float hueSegment = 1f / 6f;
+        public const float R = 0.299f, G = 0.587f, B = 0.114f;
     }
     public enum CustomColorModel
     {
