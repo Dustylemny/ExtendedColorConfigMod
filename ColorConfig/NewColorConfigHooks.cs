@@ -369,28 +369,16 @@ namespace ColorConfig
                             colSliders.Count > colSliderNum &&
                             colSliders[colSliderNum] != null)
                         {
-                            if (array[2] == "RGB")
+                            if (array[2] == "RGB" && MenuToolObj.RGBNames.Contains(array[3]))
                             {
-                                f = array[3] == "RED" ? colSliders[colSliderNum].color.r : array[3] == "GREEN" ? colSliders[colSliderNum].color.g : array[3] == "BLUE" ? colSliders[colSliderNum].color.b : f;
+                                f = array[3] == "RED" ? colSliders[colSliderNum].color.r : array[3] == "GREEN" ? colSliders[colSliderNum].color.g : colSliders[colSliderNum].color.b;
+                                return true;
                             }
-                            else if (array[2] == "HSV")
+                            else if (array[2] == "HSV" && MenuToolObj.HSVNames.Contains(array[3]))
                             {
                                 Vector3 hsv = ColConversions.HSL2HSV(colSliders[colSliderNum].hslColor.HSL2Vector3());
-                                if (array[3] == "HUE")
-                                {
-                                    f = hsv[0];
-                                    return true;
-                                }
-                                else if (array[3] == "SAT")
-                                {
-                                    f = hsv[1];
-                                    return true;
-                                }
-                                else if (array[3] == "VALUE")
-                                {
-                                    f = hsv[2];
-                                    return true;
-                                }
+                                f = array[3] == "HUE" ? hsv.x : array[3] == "SAT" ? hsv.y : hsv.z;
+                                return true;
                             }
                         }
                     }
