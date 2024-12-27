@@ -186,6 +186,8 @@ namespace ColorConfig
                         IDGroups.Add(new(MenuToolObj.HueHSV, MenuToolObj.SatHSV, MenuToolObj.ValHSV,
                            MenuToolObj.HSVNames, MenuToolObj.hueOOShowInt, MenuToolObj.hueOOMultipler));
                     }
+                    IDGroups.Add(new(MenuToolObj.HueHCY, MenuToolObj.ChromaHCY, MenuToolObj.LumaHCY,
+                        MenuToolObj.HCYNames, MenuToolObj.hueOOShowInt, MenuToolObj.hueOOMultipler));
                     return IDGroups;
                 }
             }
@@ -1113,7 +1115,7 @@ namespace ColorConfig
                 public Dictionary<string, string> LoadFileNames(SlugcatStats.Name name, List<string> bodyNames)
                 {
                     Dictionary<string, string> bodyPaths = new();
-                    foreach (string txtpath in SmallUtils.FindFilePaths("colorconfig", ".png"))
+                    foreach (string txtpath in SmallUtils.FindFilePaths("colorconfig", ".txt"))
                     {
                         string resolvedPath = AssetManager.ResolveFilePath(txtpath);
                         if (File.Exists(resolvedPath))
@@ -1165,8 +1167,8 @@ namespace ColorConfig
                             file = path;
                             if (path.Contains("/"))
                             {
-                                file = path.Split('|').Last();
-                                folder = path.Replace(file + "/", string.Empty);
+                                file = path.Split('/').Last();
+                                folder = path.Replace("/" + file, string.Empty);
                             }
                         }
                         ColorConfigMod.DebugLog($"BodyPart: {bodyNames[i]},Folder: {folder}, File: {file}");
