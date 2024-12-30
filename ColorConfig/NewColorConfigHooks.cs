@@ -186,8 +186,6 @@ namespace ColorConfig
                         IDGroups.Add(new(MenuToolObj.HueHSV, MenuToolObj.SatHSV, MenuToolObj.ValHSV,
                            MenuToolObj.HSVNames, MenuToolObj.hueOOShowInt, MenuToolObj.hueOOMultipler));
                     }
-                    IDGroups.Add(new(MenuToolObj.HueHCY, MenuToolObj.ChromaHCY, MenuToolObj.LumaHCY,
-                        MenuToolObj.HCYNames, MenuToolObj.hueOOShowInt, MenuToolObj.hueOOMultipler));
                     return IDGroups;
                 }
             }
