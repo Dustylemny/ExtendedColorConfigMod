@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
-    <LangVersion>11</LangVersion>
+    <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -12,8 +12,20 @@
     <Reference Include="HOOKS-Assembly-CSharp">
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Rain World\BepInEx\plugins\HOOKS-Assembly-CSharp.dll</HintPath>
     </Reference>
+    <Reference Include="LukkyMod">
+      <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\workshop\content\312520\3303706692\plugins\LukkyMod.dll</HintPath>
+    </Reference>
     <Reference Include="Mono.Cecil">
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Rain World\BepInEx\core\Mono.Cecil.dll</HintPath>
+    </Reference>
+    <Reference Include="Mono.Cecil.Mdb">
+      <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Rain World\BepInEx\core\Mono.Cecil.Mdb.dll</HintPath>
+    </Reference>
+    <Reference Include="Mono.Cecil.Pdb">
+      <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Rain World\BepInEx\core\Mono.Cecil.Pdb.dll</HintPath>
+    </Reference>
+    <Reference Include="Mono.Cecil.Rocks">
+      <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Rain World\BepInEx\core\Mono.Cecil.Rocks.dll</HintPath>
     </Reference>
     <Reference Include="MonoMod">
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Rain World\BepInEx\core\MonoMod.dll</HintPath>
@@ -26,6 +38,9 @@
     </Reference>
     <Reference Include="Assembly-CSharp">
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Rain World\BepInEx\utils\PUBLIC-Assembly-CSharp.dll</HintPath>
+    </Reference>
+    <Reference Include="Rain Meadow">
+      <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\workshop\content\312520\3388224007\plugins\Rain Meadow.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine">
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Rain World\RainWorld_Data\Managed\UnityEngine.dll</HintPath>
