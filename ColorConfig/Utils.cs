@@ -76,8 +76,6 @@ namespace ColorConfig
         public const string sat = "SAT";
         public const string lit = "LIT";
 
-        //public const string degreeSign = " °";
-
         //RWStuff Clamp
         public static readonly Vector3 hslClampMax = new(0.99f, 1, 1);
         public static readonly Vector3 hslClampMin = new(0, 0, 0.01f);
@@ -87,7 +85,7 @@ namespace ColorConfig
         //main
         public const string id = "dusty.colorconfig";
         public const string name = "Extended Color Config";
-        public const string version = "1.2.8";
+        public const string version = "1.2.9";
 
         //for faster getting collection values and defaulting if failed to find
         public static IList<T> ToSingleList<T>(this T obj)

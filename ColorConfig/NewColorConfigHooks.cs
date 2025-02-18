@@ -39,11 +39,11 @@ namespace ColorConfig
                     On.RainWorld.Update += On_RainWorld_Update;
                     On.Menu.MenuObject.Update += On_MenuObject_Update;
                     On.Menu.MenuObject.Singal += On_MenuObject_Singal;
-                    ColorConfigMod.DebugLog("SlugcatSelectMenuHooks: Successfully initialized Menuobject hooks");
+                    ColorConfigMod.DebugLog("Successfully initialized Menuobject hooks");
                 }
                 catch (Exception ex)
                 {
-                    ColorConfigMod.DebugException("SlugcatSelectMenuHooks: Failed to initialize Menuobject hooks", ex);
+                    ColorConfigMod.DebugException("Failed to initialize Menuobject hooks", ex);
                 }
             }
             public void On_RainWorld_Update(On.RainWorld.orig_Update orig, RainWorld self)
@@ -91,121 +91,16 @@ namespace ColorConfig
                     On.Menu.SlugcatSelectMenu.Update += On_SlugcatSelectMenu_Update;
                     On.Menu.SlugcatSelectMenu.ValueOfSlider += On_SlugcatSelectMenu_ValueOfSlider;
                     On.Menu.SlugcatSelectMenu.SliderSetValue += On_SlugcatSelectMenu_SliderSetValue;
-                    ColorConfigMod.DebugLog("SlugcatSelectMenuHooks: Sucessfully extended color interface for slugcat select menu!");
+                    ColorConfigMod.DebugLog("Sucessfully extended color interface for slugcat select menu!");
                 }
                 catch (Exception ex)
                 {
-                    ColorConfigMod.DebugException("SlugcatSelectMenuHooks: Failed to initialize slugcat select menu hooks", ex);
+                    ColorConfigMod.DebugException("Failed to initialize slugcat select menu hooks", ex);
                 }
 
             }
 
             //Slugcat Select Menu Hooks
-            public void IL_SlugcatSelectMenu_CustomColorInterface_ctor(ILContext il)
-            {
-                ILCursor cursor = new(il);
-                if (!cursor.TryGotoNext(MoveType.After, (x) => x.MatchCall(typeof(Custom), "HSL2RGB"), (x) => x.MatchCallvirt<MenuIllustration>("set_color")))
-                {
-                    ColorConfigMod.DebugError("IL_SlugcatSelectMenu_CustomColorInterface_ctor: Failed to find desired hsl2rgb color to patch");
-                    return;
-                }
-                ColorConfigMod.DebugILCursor("IL_SlugcatSelectMenu_CustomColorInterface_ctor: ", cursor);
-                try
-                {
-                    cursor.Emit(OpCodes.Ldarg_0);
-                    cursor.Emit(OpCodes.Ldarg_1);
-                    cursor.Emit(OpCodes.Ldloc_0);
-                    cursor.EmitDelegate(new Action<SlugcatSelectMenu.CustomColorInterface, Menu.Menu, int>((self, menu, i) =>
-                    {
-                        Vector3 hsl = menu.MenuHSL(self.slugcatID, i);
-                        if (hsl.x == 1)
-                        {
-                            hsl.x = 0;
-                            menu.SaveHSLString(self.slugcatID, i, SmallUtils.SetHSLSaveString(hsl));
-                            self.bodyColors[i].color = ColConversions.HSL2RGB(hsl);
-                        }
-                    }));
-                    //ColorConfigMod.DebugLog("IL_SlugcatSelectMenu_CustomColorInterface_ctor: Successfully patched desired hsl2rgb color!");
-                }
-                catch (Exception e)
-                {
-                    ColorConfigMod.DebugException("IL_SlugcatSelectMenu_CustomColorInterface_ctor: Failed to patch desired hsl2rgb color", e);
-                }
-            }
-            public void IL_SlugcatSelectMenu_StartGame(ILContext il)
-            {
-                ILCursor cursor = new(il);
-                if (!cursor.TryGotoNext((x) => x.MatchLdloc(0), (x) => x.MatchLdloca(2), (x) => x.MatchLdcI4(0), (x) => x.MatchCall<Vector3>("get_Item")))
-                {
-                    ColorConfigMod.DebugError("IL_SlugcatSelectMenu_StartGame: Failed to find desired get-custom hsl to patch");
-                    return;
-                }
-                ColorConfigMod.DebugILCursor("IL_SlugcatSelectMenu_StartGame: ", cursor);
-                try
-                {
-                    cursor.Emit(OpCodes.Ldarg_0);
-                    cursor.Emit(OpCodes.Ldloc_1);
-                    cursor.Emit(OpCodes.Ldloca, 2);
-                    cursor.EmitDelegate(delegate (SlugcatSelectMenu self, int i, ref Vector3 hsl)
-                    {
-                        if (hsl[0] == 1)
-                        {
-                            hsl[0] = 0;
-                            self.SaveHSLString(i, SmallUtils.SetHSLSaveString(hsl));
-                        }
-                    });
-                    //ColorConfigMod.DebugLog("IL_SlugcatSelectMenu_StartGame: Successfully patched desired get-custom hsl!");
-                }
-                catch (Exception e)
-                {
-                    ColorConfigMod.DebugException("IL_SlugcatSelectMenu_StartGame: Failed to patch desired get-custom hsl", e);
-                }
-            }
-            public void IL_SlugcatSelectMenu_SliderSetValue(ILContext il)
-            {
-                ILCursor cursor = new(il);
-                if (!cursor.TryGotoNext(MoveType.After, (x) => x.MatchLdcR4(0), (x) => x.MatchLdcR4(0.99f), (x) => x.MatchCall<Mathf>("Clamp"), (x) => x.MatchCall<Vector3>("set_Item")))
-                {
-                    ColorConfigMod.DebugError("IL_SlugcatSelectMenu_SliderSetValue: Failed to find desired HSL(Hue) slider clamp to patch");
-                    return;
-                }
-                ColorConfigMod.DebugILCursor("IL_SlugcatSelectMenu_SliderSetValue: ", cursor);
-                try
-                {
-                    cursor.Emit(OpCodes.Ldarg_2);
-                    cursor.Emit(OpCodes.Ldloca, 2);
-                    cursor.EmitDelegate(delegate (float f, ref Vector3 hsl)
-                    {
-                        hsl = (f > 0.99f && ModOptions.DisableHueSliderMaxClamp.Value) ? new(Mathf.Clamp01(f), hsl.y, hsl.z) : hsl;
-                    });
-                    //ColorConfigMod.DebugLog("IL_SlugcatSelectMenu_SliderSetValue: Successfully patched desired HSL(Hue) slider clamp!");
-                }
-                catch (Exception e)
-                {
-                    ColorConfigMod.DebugException("IL_SlugcatSelectMenu_SliderSetValue: Failed to patch desired HSL(Hue) slider clamp", e);
-                }
-                if (!cursor.TryGotoNext(MoveType.After, (x) => x.MatchCall(typeof(Custom), "HSL2RGB"), (x) => x.MatchCallvirt<MenuIllustration>("set_color")))
-                {
-                    ColorConfigMod.DebugError("IL_SlugcatSelectMenu_SliderSetValue: Failed to find desired new hsl to rgb to patch");
-                    return;
-                }
-                try
-                {
-                    cursor.Emit(OpCodes.Ldarg_0);
-                    cursor.Emit(OpCodes.Ldarg_2);
-                    cursor.Emit(OpCodes.Ldloc_1);
-                    cursor.Emit(OpCodes.Ldloc_2);
-                    cursor.EmitDelegate(new Action<SlugcatSelectMenu, float, int, Vector3>((self, f, colChooser, newHSL) =>
-                    {
-                        self.colorInterface.bodyColors[colChooser].color = newHSL[0] == 1 ? ColConversions.HSL2RGB(newHSL) : self.colorInterface.bodyColors[colChooser].color;
-                    }));
-                    //ColorConfigMod.DebugLog("IL_SlugcatSelectMenu_SliderSetValue: Successfully patched desired new hsl to rgb!");
-                }
-                catch (Exception e)
-                {
-                    ColorConfigMod.DebugException("IL_SlugcatSelectMenu_SliderSetValue: Failed to patch desired new hsl to rgb to patch", e);
-                }
-            }
             public void On_SlugcatSelectMenu_AddColorButtons(On.Menu.SlugcatSelectMenu.orig_AddColorButtons orig, SlugcatSelectMenu self)
             {
                 orig(self);
@@ -426,14 +321,14 @@ namespace ColorConfig
         {
             public void Init()
             {
-                IL.JollyCoop.JollyMenu.ColorChangeDialog.ValueOfSlider += IL_Dialog_ValueOfSlider;
-                IL.JollyCoop.JollyMenu.ColorChangeDialog.SliderSetValue += IL_Dialog_SliderSetValue;
+                //IL.JollyCoop.JollyMenu.ColorChangeDialog.ValueOfSlider += IL_Dialog_ValueOfSlider;
+                //IL.JollyCoop.JollyMenu.ColorChangeDialog.SliderSetValue += IL_Dialog_SliderSetValue;
                 On.JollyCoop.JollyMenu.ColorChangeDialog.ValueOfSlider += On_Dialog_ValueOfSlider;
                 On.JollyCoop.JollyMenu.ColorChangeDialog.SliderSetValue += On_Dialog_SliderSetValue;
                 On.JollyCoop.JollyMenu.ColorChangeDialog.ColorSlider.ctor += On_Color_Slider_ctor;
                 On.JollyCoop.JollyMenu.ColorChangeDialog.ColorSlider.RemoveSprites += On_ColorSlider_RemoveSprites;
-                On.JollyCoop.JollyMenu.ColorChangeDialog.ColorSlider.HSL2RGB += On_ColorSlider_HSL2RGB;
-                On.JollyCoop.JollyMenu.ColorChangeDialog.ColorSlider.RGB2HSL += On_ColorSlider_RGB2HSL;
+                //On.JollyCoop.JollyMenu.ColorChangeDialog.ColorSlider.HSL2RGB += On_ColorSlider_HSL2RGB;
+                //On.JollyCoop.JollyMenu.ColorChangeDialog.ColorSlider.RGB2HSL += On_ColorSlider_RGB2HSL;
                 ColorConfigMod.DebugLog("Sucessfully extended color interface for jolly coop menu!");
                 if (ColorConfigMod.IsLukkyRGBColorSliderModOn)
                 {
@@ -441,55 +336,6 @@ namespace ColorConfig
                 }
             }
             //jolly-coop
-            public void IL_Dialog_SliderSetValue(ILContext il)
-            {
-                ILCursor cursor = new(il);
-                if (!cursor.TryGotoNext(MoveType.After, (x) => x.MatchCall<ColorChangeDialog>("<SliderSetValue>g__AssignCorrectColorDimension|15_0")))
-                {
-                    ColorConfigMod.DebugError("IL_Dialog_SliderSetValue: Failed to find desired set hue to patch");
-                    return;
-                }
-                ColorConfigMod.DebugILCursor("IL_Dialog_SliderSetValue: ", cursor);
-                try
-                {
-                    cursor.Emit(OpCodes.Ldarg_2);
-                    cursor.Emit(OpCodes.Ldloc_3);
-                    cursor.Emit(OpCodes.Ldloc_2);
-                    cursor.EmitDelegate(new Action<float, ColorChangeDialog.ColorSlider, int>((f, colSlider, oOO) =>
-                    {
-                        colSlider.hslColor.hue = shouldGetfullHue && oOO != 1 && oOO != 2 && f > 0.99f ? Mathf.Clamp01(f) : colSlider.hslColor.hue;
-                    }));
-                }
-                catch (Exception e)
-                {
-                    ColorConfigMod.DebugException("Failed to patch desired set hue", e);
-                }
-            }
-            public void IL_Dialog_ValueOfSlider(ILContext il)
-            {
-                ILCursor cursor = new(il);
-                if (!cursor.TryGotoNext(MoveType.After, (x) => x.MatchLdloc(5), (x) => x.MatchLdfld<ColorChangeDialog.ColorSlider>(nameof(ColorChangeDialog.ColorSlider.hslColor)), (x) => x.MatchLdloc(2),
-                    (x) => x.MatchCall<ColorChangeDialog>("<ValueOfSlider>g__GetCorrectColorDimension|16_0")))
-                {
-                    ColorConfigMod.DebugError("IL_Dialog_ValueOfSlider: Failed to find desired non clamped hue to patch");
-                    return;
-                }
-                ColorConfigMod.DebugILCursor("IL_Dialog_ValueOfSlider: ", cursor);
-                try
-                {
-                    cursor.Emit(OpCodes.Ldloc, 5);
-                    cursor.Emit(OpCodes.Ldloc_2);
-                    cursor.EmitDelegate(new Func<float, ColorChangeDialog.ColorSlider, int, float>((origFloat, colSlider, oOO) =>
-                    {
-                        return SmallUtils.ValueOfBodyPart(colSlider.hslColor, oOO);
-                    }));
-                    cursor.Emit(OpCodes.Ret);
-                }
-                catch (Exception e)
-                {
-                    ColorConfigMod.DebugException("Failed to patch desired non clamped hue", e);
-                }
-            }
             public void On_Color_Slider_ctor(On.JollyCoop.JollyMenu.ColorChangeDialog.ColorSlider.orig_ctor orig, ColorChangeDialog.ColorSlider self, Menu.Menu menu, MenuObject owner, Vector2 pos, int playerNumber, int bodyPart, string sliderTitle)
             {
                 orig(self, menu, owner, pos, playerNumber, bodyPart, sliderTitle);
@@ -500,8 +346,9 @@ namespace ColorConfig
                 if (!jollyConfigPages.ContainsKey(self))
                 {
                     MenuInterfaces.JollyCoopOOOConfigPages jollyCoopOOOConfigPages = new(menu, self, bodyPart, ModOptions.ShouldRemoveHSLSliders || ModOptions.FollowLukkyRGBSliders);
-                    jollyConfigPages.Add(self, jollyCoopOOOConfigPages);
                     self.subObjects.Add(jollyCoopOOOConfigPages);
+                    jollyConfigPages.Add(self, jollyCoopOOOConfigPages);
+                    jollyCoopOOOConfigPages.oOOPages.PopulatePage(jollyCoopOOOConfigPages.oOOPages.CurrentOffset);
 
                 }
             }
@@ -517,20 +364,6 @@ namespace ColorConfig
                     jollyConfigPages[self].RemoveSprites();
                     self.RemoveSubObject(jollyConfigPages[self]);
                     jollyConfigPages.Remove(self);
-                }
-            }
-            public void On_ColorSlider_HSL2RGB(On.JollyCoop.JollyMenu.ColorChangeDialog.ColorSlider.orig_HSL2RGB orig, ColorChangeDialog.ColorSlider self)
-            {
-                orig(self);
-                self.color = self.hslColor.hue == 1 ? ColConversions.HSL2RGB(self.hslColor.HSL2Vector3()) : self.color;
-            }
-            public void On_ColorSlider_RGB2HSL(On.JollyCoop.JollyMenu.ColorChangeDialog.ColorSlider.orig_RGB2HSL orig, ColorChangeDialog.ColorSlider self)
-            {
-                orig(self);
-                if (shouldGetfullHue)
-                {
-                    SmallUtils.RWIIIClamp(self.color.RGB2Vector3(), CustomColorModel.RGB, out Vector3 newHSL, !shouldGetfullHue);
-                    self.hslColor = newHSL.Vector32HSL();
                 }
             }
             public float On_Dialog_ValueOfSlider(On.JollyCoop.JollyMenu.ColorChangeDialog.orig_ValueOfSlider orig, ColorChangeDialog self, Slider slider)
@@ -671,10 +504,10 @@ namespace ColorConfig
                 if (!cursor.TryGotoNext(MoveType.After, (x) => x.MatchDiv(), (x) => x.MatchNewobj<Color>(), (x) => x.MatchCall<RXColor>("HSLFromColor"),
                     (x) => x.MatchStloc(0)))
                 {
-                    ColorConfigMod.DebugError("IL_OPColorPicker_set_value: Failed to find after hsl set value");
+                    ColorConfigMod.DebugError("Failed to find after hsl set value");
                     return;
                 }
-                ColorConfigMod.DebugILCursor("IL_OPColorPicker_set_value: ", cursor);
+                ColorConfigMod.DebugILCursor(cursor);
                 try
                 {
                     cursor.Emit(OpCodes.Ldarg_0);
@@ -697,11 +530,11 @@ namespace ColorConfig
                         }
 
                     });
-                    //ColorConfigMod.DebugLog("IL_OPColorPicker_set_value: Successfully patched set_value for hsv");
+                    //ColorConfigMod.DebugLog("Successfully patched set_value for hsv");
                 }
                 catch (Exception e)
                 {
-                    ColorConfigMod.DebugException("IL_OPColorPicker_set_value: Failed to patch set_value for hsv", e);
+                    ColorConfigMod.DebugException("Failed to patch set_value for hsv", e);
                 }
             }
             public void IL_OPColorPicker_Change(ILContext iL)
@@ -710,10 +543,10 @@ namespace ColorConfig
                 if (!cursor.TryGotoNext(MoveType.After, (x) => x.MatchCall(typeof(Custom), "HSL2RGB"),
                     (x) => x.MatchCallvirt<FSprite>("set_color")))
                 {
-                    ColorConfigMod.DebugError("IL_OPColorPicker_Change: Failed to find set HSL Color");
+                    ColorConfigMod.DebugError("Failed to find set HSL Color");
                     return;
                 }
-                ColorConfigMod.DebugILCursor("IL_OPColorPicker_Change: ", cursor);
+                ColorConfigMod.DebugILCursor(cursor);
                 try
                 {
                     cursor.Emit(OpCodes.Ldarg_0);
@@ -725,7 +558,7 @@ namespace ColorConfig
                 }
                 catch (Exception e)
                 {
-                    ColorConfigMod.DebugException("IL_OPColorPicker_Change: Failed to patch _cdis0 Color", e);
+                    ColorConfigMod.DebugException("Failed to patch _cdis0 Color", e);
                 }
             }
             public void IL_OPColorPicker__HSLSetValue(ILContext il)
@@ -733,10 +566,10 @@ namespace ColorConfig
                 ILCursor cursor = new(il);
                 if (!cursor.TryGotoNext(MoveType.After, (x) => x.MatchCall(typeof(Custom), "HSL2RGB"), (x) => x.MatchStloc(0)))
                 {
-                    ColorConfigMod.DebugError("IL_OPColorPicker__HSLSetValue: Failed to find set RGB Color");
+                    ColorConfigMod.DebugError("Failed to find set RGB Color");
                     return;
                 }
-                ColorConfigMod.DebugILCursor("IL_OPColorPicker__HSLSetValue: ", cursor);
+                ColorConfigMod.DebugILCursor(cursor);
                 try
                 {
                     cursor.Emit(OpCodes.Ldarg_0);
@@ -750,7 +583,7 @@ namespace ColorConfig
                 }
                 catch (Exception e)
                 {
-                    ColorConfigMod.DebugException("IL_OPColorPicker__HSLSetValue: Failed to patch RGB Color", e);
+                    ColorConfigMod.DebugException("Failed to patch RGB Color", e);
                 }
             }
             public void IL_OPColorPicker_MouseModeUpdate(ILContext iL)
@@ -782,7 +615,7 @@ namespace ColorConfig
                     cursor.GotoNext((x) => x.MatchSub(), (x) => x.Match(OpCodes.Switch));
                     cursor.GotoNext(colorMatch);
                     cursor.GotoNext(MoveType.After, visiblityMatch);
-                    ColorConfigMod.DebugILCursor("IL_OPColorPickerMouseModeUpdateUpdate: ", cursor);
+                    ColorConfigMod.DebugILCursor(cursor);
                     //huesat2SatLittextFix vvvvvv
                     cursor.Emit(OpCodes.Ldarg_0);
                     cursor.Emit(OpCodes.Ldloc_3);
@@ -815,17 +648,17 @@ namespace ColorConfig
                     }));
                     cursor.Emit(OpCodes.Brfalse, cursor.Next);
                     cursor.Emit(OpCodes.Ret);
-                    //ColorConfigMod.DebugLog("IL_OPColorPickerMouseModeUpdate: Sucessfully patched MiniFocus SatHue!");
+                    //ColorConfigMod.DebugLog("Sucessfully patched MiniFocus SatHue!");
                     // ^^^^^^
                 }
                 catch (Exception e)
                 {
-                    ColorConfigMod.DebugException("IL_OPColorPickerMouseModeUpdate: Failed to patch for MiniFocus SatHue", e);
+                    ColorConfigMod.DebugException("Failed to patch for MiniFocus SatHue", e);
                 }
                 try
                 {
                     cursor.GotoNext(MoveType.After, visiblityMatch);
-                    ColorConfigMod.DebugILCursor("IL_OPColorPickerMouseModeUpdateUpdate: ", cursor);
+                    ColorConfigMod.DebugILCursor(cursor);
                     //colorfix vvvvvv
                     cursor.Emit(OpCodes.Ldarg_0);
                     cursor.Emit(OpCodes.Ldloc, 5);
@@ -862,13 +695,13 @@ namespace ColorConfig
                 }
                 catch (Exception e)
                 {
-                    ColorConfigMod.DebugException("IL_OPColorPickerMouseModeUpdate: Failed to patch Minifocus for Lit", e);
+                    ColorConfigMod.DebugException("Failed to patch Minifocus for Lit", e);
                 }
                 try
                 {
                     cursor.GotoNext(MoveType.After, PickerModeSwitch);
                     cursor.GotoNext(MoveType.After, colorMatch);
-                    ColorConfigMod.DebugILCursor("IL_OPColorPickerMouseModeUpdateUpdate: ", cursor);
+                    ColorConfigMod.DebugILCursor(cursor);
                     cursor.Emit(OpCodes.Ldarg_0);
                     cursor.Emit(OpCodes.Ldloc, 11);
                     cursor.EmitDelegate(new Action<OpColorPicker, int>((self, litHue) =>
@@ -891,12 +724,12 @@ namespace ColorConfig
                 }
                 catch (Exception e)
                 {
-                    ColorConfigMod.DebugException("IL_OPColorPickerMouseModeUpdate: Failed to patch HoverMouse for Hue", e);
+                    ColorConfigMod.DebugException("Failed to patch HoverMouse for Hue", e);
                 }
                 try
                 {
                     cursor.GotoNext(MoveType.After, colorMatch);
-                    ColorConfigMod.DebugILCursor("IL_OPColorPickerMouseModeUpdateUpdate: ", cursor);
+                    ColorConfigMod.DebugILCursor(cursor);
                     cursor.Emit(OpCodes.Ldarg_0);
                     cursor.Emit(OpCodes.Ldloc, 12);
                     cursor.Emit(OpCodes.Ldloc, 13);
@@ -920,7 +753,7 @@ namespace ColorConfig
                 }
                 catch (Exception e)
                 {
-                    ColorConfigMod.DebugException("IL_OPColorPickerMouseModeUpdate: Failed to patch HoverMouse for Sat and Lit", e);
+                    ColorConfigMod.DebugException("Failed to patch HoverMouse for Sat and Lit", e);
                 }
 
             }
@@ -935,7 +768,7 @@ namespace ColorConfig
                     cursor.GotoNext((x) => x.MatchLdarg(0), (x) => x.MatchCall<UIelement>("get_MenuMouseMode"),
                         (x) => x.Match(OpCodes.Brfalse_S));
                     cursor.GotoNext(MoveType.After, (x) => x.MatchCallvirt<FLabel>("get_color"), (x) => x.MatchCallvirt<FLabel>("set_color"));
-                    ColorConfigMod.DebugILCursor("IL_OPColorPickerGrafUpdate: ", cursor);
+                    ColorConfigMod.DebugILCursor(cursor);
                     cursor.Emit(OpCodes.Ldarg_0);
                     cursor.EmitDelegate(new Action<OpColorPicker>((self) =>
                     {
@@ -945,16 +778,16 @@ namespace ColorConfig
                             self._lblR.color = self.colorText;
                         }
                     }));
-                    //ColorConfigMod.DebugLog("IL_OPColorPickerGrafUpdate: Successfully patched hue2lit text color");
+                    //ColorConfigMod.DebugLog("Successfully patched hue2lit text color");
                 }
                 catch (Exception e)
                 {
-                    ColorConfigMod.DebugException("IL_OPColorPickerGrafUpdate: Failed to patch hue2lit text color", e);
+                    ColorConfigMod.DebugException("Failed to patch hue2lit text color", e);
                 }
                 try
                 {
                     cursor.GotoNext(MoveType.After, (x) => x.MatchNewobj<Vector2>(), (x) => x.MatchCallvirt<GlowGradient>("set_pos"));
-                    ColorConfigMod.DebugILCursor("IL_OPColorPickerGrafUpdate: ", cursor);
+                    ColorConfigMod.DebugILCursor(cursor);
                     cursor.Emit(OpCodes.Ldarg_0);
                     cursor.EmitDelegate(new Action<OpColorPicker>((self) =>
                     {
@@ -963,18 +796,18 @@ namespace ColorConfig
                             self._focusGlow.pos = new(104f, 25f);
                         }
                     }));
-                    //ColorConfigMod.DebugLog("IL_OPColorPickerGrafUpdate: Successfully patched focus glow for hue2lit text");
+                    //ColorConfigMod.DebugLog("Successfully patched focus glow for hue2lit text");
                 }
                 catch (Exception e)
                 {
-                    ColorConfigMod.DebugException("IL_OPColorPickerGrafUpdate: Failed to fix focus glow for hue2lit text", e);
+                    ColorConfigMod.DebugException("Failed to fix focus glow for hue2lit text", e);
                 }
                 try
                 {
                     cursor.GotoNext((x) => x.MatchLdarg(0), (x) => x.MatchLdfld<OpColorPicker>(nameof(OpColorPicker._lblB)),
                      (x) => x.MatchLdarg(0), (x) => x.MatchLdfld<OpColorPicker>(nameof(OpColorPicker.colorText)));
                     cursor.GotoNext((x) => x.MatchLdarg(0), (x) => x.MatchLdfld<OpColorPicker>(nameof(OpColorPicker._focusGlow)));
-                    ColorConfigMod.DebugILCursor("IL_OPColorPickerGrafUpdate: ", cursor);
+                    ColorConfigMod.DebugILCursor(cursor);
                     cursor.Emit(OpCodes.Ldarg_0);
                     cursor.EmitDelegate(new Action<OpColorPicker>((self) =>
                     {
@@ -984,16 +817,16 @@ namespace ColorConfig
                             self._lblB.color = self.colorText;
                         }
                     }));
-                    //ColorConfigMod.DebugLog("IL_OPColorPickerGrafUpdate: Successfully patched lit2hue text color");
+                    //ColorConfigMod.DebugLog("Successfully patched lit2hue text color");
                 }
                 catch (Exception e)
                 {
-                    ColorConfigMod.DebugException("IL_OPColorPickerGrafUpdate: Failed to fix lit2hue text color", e);
+                    ColorConfigMod.DebugException("Failed to fix lit2hue text color", e);
                 }
                 try
                 {
                     cursor.GotoNext(MoveType.After, (x) => x.MatchNewobj<Vector2>(), (x) => x.MatchCallvirt<GlowGradient>("set_pos"));
-                    ColorConfigMod.DebugILCursor("IL_OPColorPickerGrafUpdate: ", cursor);
+                    ColorConfigMod.DebugILCursor(cursor);
                     cursor.Emit(OpCodes.Ldarg_0);
                     cursor.EmitDelegate(new Action<OpColorPicker>((self) =>
                     {
@@ -1002,11 +835,11 @@ namespace ColorConfig
                             self._focusGlow.pos = new Vector2(104f, 105f);
                         }
                     }));
-                    //ColorConfigMod.DebugLog("IL_OPColorPickerGrafUpdate: Successfully patched focus glow for lit2hue text");
+                    //ColorConfigMod.DebugLog("Successfully patched focus glow for lit2hue text");
                 }
                 catch (Exception e)
                 {
-                    ColorConfigMod.DebugException("IL_OPColorPickerGrafUpdate: Failed to fix focus glow for lit2hue text", e);
+                    ColorConfigMod.DebugException("Failed to fix focus glow for lit2hue text", e);
                 }
             }
             public void On_OPColorPicker_Ctor(On.Menu.Remix.MixedUI.OpColorPicker.orig_ctor orig, OpColorPicker self, Configurable<Color> config, Vector2 pos)
@@ -1125,7 +958,6 @@ namespace ColorConfig
                         showValues = false
                     };
                     subObjects.Add(oOOPages);
-                    oOOPages.PopulatePage(oOOPages.CurrentOffset);
                 }
                 if (valueLabel == null)
                 {
@@ -1379,8 +1211,8 @@ namespace ColorConfig
                         roundingType = ModOptions.SliderRounding.Value,
                     };
                     subObjects.Add(oOOPages);
+                    oOOPages.PopulatePage(oOOPages.CurrentOffset);
                 }
-                oOOPages.PopulatePage(oOOPages.CurrentOffset);
                 if (oOOPages.PagesOn)
                 {
                     menu.MutualVerticalButtonBind(oOOPages.nextButton, sliderOOO);
@@ -1683,6 +1515,11 @@ namespace ColorConfig
             }
             public void PopulatePage(int offset)
             {
+                if (offset < 0 || offset > OOOIDGroups?.Count)
+                {
+                    ColorConfigMod.DebugWarning("offset is more than sliderIDs count or less than 0!");
+                    return;
+                }
                 CurrentOffset = offset;
                 if (OOOIDGroups?.Count > 0 && OOOIDGroups[offset] != null)
                 {
@@ -1701,15 +1538,15 @@ namespace ColorConfig
                 }
                 if (sliderO != null)
                 {
-                    menu.SliderSetValue(sliderO, menu.ValueOfSlider(sliderO));
+                    sliderO.floatValue = sliderO.floatValue;
                 }
                 if (sliderOO != null)
                 {
-                    menu.SliderSetValue(sliderOO, menu.ValueOfSlider(sliderOO));
+                    sliderOO.floatValue = sliderOO.floatValue;
                 }
                 if (sliderOOO != null)
                 {
-                    menu.SliderSetValue(sliderOOO, menu.ValueOfSlider(sliderOOO));
+                    sliderOOO.floatValue = sliderOOO.floatValue;
                 }
             }
             public void ActivateButtons()

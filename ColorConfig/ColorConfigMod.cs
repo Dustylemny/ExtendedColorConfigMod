@@ -45,11 +45,11 @@ namespace ColorConfig
                     ModOptions modOptions = new();
                     MachineConnector.SetRegisteredOI("dusty.colorconfig", modOptions);
                     ColorConfigHooks.Init();
+                    DebugLog("OnModsinit Success");
                 }
                 catch (Exception ex)
                 {
-                    Logger.LogMessage("Oopsies, error occured");
-                    Logger.LogError(ex);
+                    DebugException("Oopsies, error occured", ex);
                 }
             }
         }
@@ -58,27 +58,33 @@ namespace ColorConfig
             IsLukkyRGBColorSliderModOn = ModManager.ActiveMods.Any(x => x.id == "vultumast.rgbslider");
             IsRainMeadowOn = ModManager.ActiveMods.Any(x => x.id == "henpemaz_rainmeadow");
         }
+        public static string GetMethodName(int skipframes = 2, bool getAssembly = false)
+        {
+            StackFrame frame = new(skipframes, true);
+            MethodBase method = frame.GetMethod();
+            return $"{(getAssembly ? method.DeclaringType.FullName : method.DeclaringType.Name)}.{method.Name}";
+        }
         public static void DebugLog(string message)
         {
-            Logger.LogInfo(message);
+            Logger.LogInfo($"{GetMethodName()}: {message}");
+        }
+        public static void DebugWarning(string message)
+        {
+            Logger.LogWarning($"{GetMethodName()}: {message}");
         }
         public static void DebugError(string message)
         {
-            Logger.LogError(message);
+            Logger.LogError($"{GetMethodName()}: {message}");
         }
         public static void DebugException(string message, Exception ex)
         {
-            Logger.LogError(message);
+            Logger.LogError($"{GetMethodName()}: {message}");
             Logger.LogError(ex);
         }
-        public static void DebugILCursor(string message,ILCursor cursor)
+        public static void DebugILCursor(ILCursor cursor, string message = "")
         {
-            if (shouldEnableCursorDebug)
-            {
-                DebugLog(message + $"\nPrev : {cursor.Prev},\nNext : {cursor.Next}");
-                return;
-            }
-            DebugLog(message + $"Index: {cursor.Index}");
+            Logger.LogInfo($"{GetMethodName()}: {message}{(shouldEnableCursorDebug ?
+                $"\nPrev : {cursor.Prev},\nNext : {cursor.Next}" : $"Index: {cursor.Index}")}");
         }
         private bool IsApplied { get; set; } = false;
         private static readonly bool shouldEnableCursorDebug = false;
