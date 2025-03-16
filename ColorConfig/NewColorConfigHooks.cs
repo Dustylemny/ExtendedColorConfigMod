@@ -503,7 +503,8 @@ namespace ColorConfig
                     cursor.Emit(OpCodes.Ldarg_1);
                     cursor.EmitDelegate(delegate (RXColorHSL rXHSL, OpColorPicker self, string newVal)
                     {
-                        if (ModOptions.EnableBetterOPColorPicker.Value || ModOptions.PickerHSVMode)
+                        rXHSL = ModOptions.PickerHSVMode ? ColConversions.HSL2HSV(rXHSL.RXHSl2Vector3()).Vector32RXHSL() : rXHSL;
+                        if (ModOptions.EnableBetterOPColorPicker.Value)
                         {
                             if (self._mode == OpColorPicker.PickerMode.HSL && (self._curFocus == OpColorPicker.MiniFocus.HSL_Hue || self._curFocus == OpColorPicker.MiniFocus.HSL_Saturation || self._curFocus == OpColorPicker.MiniFocus.HSL_Lightness))
                             {
