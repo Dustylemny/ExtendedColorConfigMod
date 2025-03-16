@@ -5,17 +5,19 @@ using System;
 using System.Linq;
 using System.Security.Permissions;
 using System.Security;
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using BepInEx;
 using Menu.Remix.MixedUI;
 using MonoMod.Cil;
-using System.Collections.Generic;
-using Menu.Remix.MixedUI.ValueTypes;
 using BepInEx.Logging;
 using System.Diagnostics;
 using System.Reflection;
 using UnityEngine;
-using Menu;
-using System.Reflection.Emit;
+using static ColorConfig.MenuInterfaces;
+using static ColorConfig.ColorConfigHooks.SlugcatSelectMenuHooks;
+using static ColorConfig.ColorConfigHooks.ExpeditionMenuHooks;
+using static ColorConfig.ColorConfigHooks.OpConfigHooks;
 #pragma warning disable CS0618
 
 [module: UnverifiableCode]
@@ -23,9 +25,10 @@ using System.Reflection.Emit;
 
 namespace ColorConfig
 {
-    [BepInPlugin(SmallUtils.id, SmallUtils.name, SmallUtils.version)]
+    [BepInPlugin(id, modName, version)]
     public sealed class ColorConfigMod : BaseUnityPlugin
     {
+        public const string id = "dusty.colorconfig", modName = "Extended Color Config", version = "1.3.4";
         public void OnEnable()
         {
             Logger = base.Logger;
@@ -44,6 +47,7 @@ namespace ColorConfig
                     CheckIfModsOn();
                     ModOptions modOptions = new();
                     MachineConnector.SetRegisteredOI("dusty.colorconfig", modOptions);
+                    Futile.atlasManager.LoadAtlas("atlases/colorconfig_symbols");
                     ColorConfigHooks.Init();
                     DebugLog("OnModsinit Success");
                 }
@@ -55,8 +59,13 @@ namespace ColorConfig
         }
         public void CheckIfModsOn()
         {
-            IsLukkyRGBColorSliderModOn = ModManager.ActiveMods.Any(x => x.id == "vultumast.rgbslider");
-            IsRainMeadowOn = ModManager.ActiveMods.Any(x => x.id == "henpemaz_rainmeadow");
+            IsLukkyRGBColorSliderModOn = CheckIfModOn("vultumast.rgbslider");
+            IsRainMeadowOn = CheckIfModOn("henpemaz_rainmeadow");
+            IsBingoOn = CheckIfModOn("nacu.bingomode");
+        }
+        public bool CheckIfModOn(string id)
+        {
+            return ModManager.ActiveMods.Any(x => x.id == id);
         }
         public static string GetMethodName(int skipframes = 2, bool getAssembly = false)
         {
@@ -84,15 +93,20 @@ namespace ColorConfig
         public static void DebugILCursor(ILCursor cursor, string message = "")
         {
             Logger.LogInfo($"{GetMethodName()}: {message}{(shouldEnableCursorDebug ?
-                $"\nPrev : {cursor.Prev},\nNext : {cursor.Next}" : $"Index: {cursor.Index}")}");
+                $"{cursor}" : $"Index: {cursor.Index}")}");
         }
         private bool IsApplied { get; set; } = false;
         private static readonly bool shouldEnableCursorDebug = false;
         public static bool IsLukkyRGBColorSliderModOn { get; private set; }
         public static bool IsRainMeadowOn { get; private set; }
+        public static bool IsBingoOn { get; private set; }
         public static new ManualLogSource Logger { get; private set; }
 
-        public static MenuInterfaces.ExtraFixedMenuInput femInput = new(), lastFemInput = new();
+        public static ExtraFixedMenuInput femInput = new(), lastFemInput = new();
+
+        public static readonly ConditionalWeakTable<Menu.SlugcatSelectMenu, ExtraSSMInterfaces> extraSSMInterfaces = new();
+        public static readonly ConditionalWeakTable<Menu.CharacterSelectPage, ExtraExpeditionInterfaces> extraEXPInterfaces = new();
+        public static readonly ConditionalWeakTable<JollyCoop.JollyMenu.ColorChangeDialog.ColorSlider, JollyCoopOOOConfig> extraJollyInterfaces = new();
     }
     public sealed class ModOptions : OptionInterface
     {
@@ -100,96 +114,45 @@ namespace ColorConfig
         {
             if (includeHSL)
             {
-                bools.Add(!ModOptions.RemoveHSLSliders.Value);
+                bools.Add(!RemoveHSLSliders.Value);
             }
-            bools.AddRange([ModOptions.EnableRGBSliders.Value, ModOptions.EnableHSVSliders.Value]);
+            bools.AddRange([EnableRGBSliders.Value, EnableHSVSliders.Value]);
 
+        }
+        public Configurable<T> Bind<T>(string saveName, T defaultVal, string description, string configName, ConfigAcceptableBase configAccept = null, string auto = "")
+        {
+            return config.Bind(saveName, defaultVal, new ConfigurableInfo(description + $"  DEFAULT - {defaultVal}", configAccept, auto, tags:
+            [
+                configName,
+            ]));
         }
         public ModOptions()
         {
-            EnableVisualisers = config.Bind("EnableVisualisers", true, new ConfigurableInfo("Shows values of color config sliders (Based on color space)", tags:
-            [
-                "Enable Visualisers?"
-            ]));
-            DecimalCount = config.Bind("DecimalCount", 2, new ConfigurableInfo("Shows the number of decimal places in color config slider values", new IntAcceptable(max : 15), tags:
-            [
-                "How many decimal places?"
-            ]));
-            SliderRounding = config.Bind("SliderVisualRounding", MidpointRounding.AwayFromZero, new ConfigurableInfo("Changes how values of color config sliders are rounded", tags:
-            [
-                "Rounding Type?"
-            ]));
-            EnableSlugcatDisplay = config.Bind("enableSlugcatDisplay", true, new ConfigurableInfo("Shows slugcat display on story menu", tags:
-            [
-                "Enable Slugcat Display?"
-            ]));
-            IntToFloatColorValues = config.Bind("Int2FloatColorValues", true, new ConfigurableInfo("Adds decimals to hue and RGB values to sliders, with 'Enable Visualisers?' on", tags: [
-                "More accurate slider color values?",
-            ]));
+            EnableVisualisers = Bind("EnableVisualisers", true, "Shows values of color config sliders (Based on color space).", "Enable Visualisers?");
+            DecimalCount = Bind("DecimalCount", 2, "Shows the number of decimal places in color config slider values.", "How many decimal places?", new IntAcceptable(max: 15));
+            SliderRounding = Bind("SliderVisualRounding", MidpointRounding.AwayFromZero, "Changes how values of color config sliders are rounded.", "Rounding Type?");
+            EnableSlugcatDisplay = Bind("enableSlugcatDisplay", true, "Shows slugcat display on story menu.", "Enable Slugcat Display?");
+            IntToFloatColorValues = Bind("Int2FloatColorValues", true, "Adds decimals to hue and RGB values to sliders, with 'Enable Visualisers?' on.", "More accurate slider color values?");
+            RemoveHSLSliders = Bind("RemoveHSLSliders", false, "Removes HSL Sliders in story and jolly-coop menu, will remove if other sliders are turned on.", "Remove HSL Sliders?");
+            EnableRGBSliders = Bind("EnableRGBSliders", true, "Enables RGB Sliders in story and jolly-coop menu.", "Enable RGB Sliders?");
+            EnableHSVSliders = Bind("EnableHSVSliders", false,"Enables HSV Sliders in story and jolly-coop menu.", "Enable HSV Sliders?");
+            CopyPasteForSliders = Bind("CopyPasteForSliders", false, "Adds copy paste support to color sliders, is experimental and changes slider value based on color space\nRGB follows 255, Hue in HSL follows 360.", "Copy Paste support for color sliders?");
+            DisableHueSliderMaxClamp = Bind("DisableHueSliderMaxValue", false, "An experiemental feature that increases the hue slider max value you can set to 100% instead of 99% in story menu and expedition menu (if Enable Config for Expedition? is on)\nCAUTION as if you disable the mod after you have saved hue to 100%, it may make your saved color grey , due to rw's hue conversion. (This mod tries to convert back whenever the color config closes)", "Disable Hue Slider max slider value?");
 
-            RemoveHSLSliders = config.Bind("RemoveHSLSliders", false, new ConfigurableInfo("Removes HSL Sliders in story and jolly-coop menu, will remove if other sliders are turned on", tags:
-            [
-                "Remove HSL Sliders?"
-            ]));
-            EnableRGBSliders = config.Bind("EnableRGBSliders", true, new ConfigurableInfo("Enables RGB Sliders in story and jolly-coop menu", tags:
-            [
-                "Enable RGB Sliders?"
-            ]));
-            EnableHSVSliders = config.Bind("EnableHSVSliders", false, new ConfigurableInfo("Enables HSV Sliders in story and jolly-coop menu", tags:
-            [
-                "Enable HSV Sliders?"
-            ]));
-            CopyPasteForSliders = config.Bind("CopyPasteForSliders", false, new ConfigurableInfo("Adds copy paste support to color sliders, is experimental and changes slider value based on color space\nRGB follows 255, Hue in HSL follows 360", tags: [
-               "Copy Paste support for color sliders?"
-           ]));
-           
-            EnableHexCodeTypers = config.Bind("EnableHexCodeTypers", true, new ConfigurableInfo("Enables HexCode Typers in story and jolly-coop menu", tags:
-            [
-                "Enable HexCode Typers?"
-            ]));
+            EnableHexCodeTypers = Bind("EnableHexCodeTypers", true, "Enables HexCode Typers in story and jolly-coop menu.", "Enable HexCode Typers?");
+            EnableExpeditionColorConfig = Bind("EnableExpeditionColorConfig", false, "Experiemental, Adds custom color config to expedition.", "Enable Config for Expedition?");
 
+            EnableColorPickers = Bind("EnableColorPickers", false, "Enables Color Pickers, will remove hex code typers since its unneccesary.", "Enable Color Pickers?");
+            EnableBetterOPColorPicker = Bind("EnableBetterOPColorPicker", true, "Makes OP-ColorPicker selectors a bit less annoying.", "Enable less annoying OP-ColorPickers?");
+            EnableDiffOpColorPickerHSL = Bind("EnableDifferentOPColorPicker", true, "Changes HueSat Square Picker in HSL/HSV Mode to SatLit Square picker and vice versa.", "Enable Different OP-ColorPickers?");
+            HSL2HSVOPColorPicker = Bind("HSL2HSVOPColorPicker", true, "Replaces OP-ColorPickers' HSL mode to HSV mode.", "Enable HSV OP-ColorPickers?");
+            CopyPasteForColorPickerNumbers = Bind("CopyPatseOPColorPickerNumbers", false, "Allows copy paste for Color Picker numbers.", "Copy Paste OP-ColorPicker Numbers?");
 
-            EnableColorPickers = config.Bind("EnableColorPickers", false, new ConfigurableInfo("Enables Color Pickers, will remove hex code typers since its unneccesary", tags:
-            [
-                "Enable Color Pickers?"
-            ]));
-            EnableBetterOPColorPicker = config.Bind("EnableBetterOPColorPicker", true, new ConfigurableInfo("Makes OP-ColorPicker selectors a bit less annoying", tags:
-            [
-                "Enable less annoying OP-ColorPickers?"
-            ]));
-            EnableDifferentOpColorPickerHSLPos = config.Bind("EnableDifferentOPColorPicker", true, new ConfigurableInfo("Changes HueSat Square Picker in HSL/HSV Mode to SatLit Square picker and vice versa", tags:
-            [
-                "Enable Different OP-ColorPickers?",
-            ]));
-            HSL2HSVOPColorPicker = config.Bind("HSL2HSVOPColorPicker", true, new ConfigurableInfo("Replaces OP-ColorPickers' HSL mode to HSV mode", tags:
-            [
-                "Enable HSV OP-ColorPickers?"
-            ]));
-            CopyPasteForColorPickerNumbers = config.Bind("CopyPatseOPColorPickerNumbers", false, new ConfigurableInfo("Experimental, Allows copy paste for Color Picker numbers", tags:
-            [
-                "Copy Paste OP-ColorPicker Numbers?"
-            ]));
-
-            EnableLegacyIdeaSlugcatDisplay = config.Bind("EnableLegacyIdeaSlugcatDisplay", false, new ConfigurableInfo("Makes slugcat display in story menu to appear when the custom color checkbox is checked\ninstead of when configuring colors", tags: [
-                "Enable Original Idea Slugcat Display?"
-            ]));
-            EnableLegacySSMSliders = config.Bind("enableLegacyVersionSliders", false, new ConfigurableInfo("Overrides non-hsl sliders with a replica of the early versions for extra sliders in story menu\nWill be disabled if 'Remove HSL Sliders?' is on", tags:
-            [
-               "Enable Legacy Sliders?",
-            ]));
-            
-            RMStoryMenuSlugcatFix = config.Bind("RainMeadowStoryMenuSlugcatFix", true, new ConfigurableInfo("Fixes a small bug in rain meadow where color interface does not match slugcat campaign if the host enables campaign slugcat only \n will be applied if rain meadow has been enabled", tags: 
-            [
-               "Fix Color Interface in Rain Meadow Story Mode?",
-            ]));
-            LukkyRGBJollySliderMeansBusiness = config.Bind("LukkyRGBSliderModActiveReason", true, new ConfigurableInfo("Removes HSL Sliders and adds RGB Sliders when RGB Sliders mod is on, else follows remix options", tags: 
-            [
-                "Follow what RGB Sliders mod intended to do?",
-            ]));
-            DisableHueSliderMaxClamp = config.Bind("DisableHueSliderMaxValueClamp", false, new ConfigurableInfo("An experiemental feature that Increases the hue slider max value you can set to 100% instead of 99% in story menu\nCAUTION as if you disable the mod after you have saved hue to 100%, it may make your saved color grey in story menu, due to rw's hue conversion.", tags:
-            [
-                 "Disable Hue Slider max slider value?"
-            ]));
+            EnableLegacyIdeaSlugcatDisplay = Bind("EnableLegacySlugcatDisplay", true, "Makes slugcat display in story menu to appear when the custom color checkbox is checked\ninstead of when configuring colors.", "Enable Original Idea Slugcat Display?");
+            EnableLegacySSMSliders = Bind("enableLegacyVersionSliders", false, "Overrides color sliders with a replica of the early versions in story menu.", "Enable Legacy Sliders?");
+            EnableLegacyHexCodeTypers = Bind("EnableLegacyHexCodeTypes", false, "Overrides hex code typers with a slight replica of what I had planned at the start of this mod.", "Enable Legacy HexCode Typers?");
+          
+            LukkyRGBJollySliderMeansBusiness = Bind("LukkyRGBSliderModActiveReason", true, "Removes HSL Sliders and adds RGB Sliders when RGB Sliders mod is on, else follows remix options.", "Follow what RGB Sliders mod intended to do?");
         }
         public override void Initialize()
         {
@@ -213,17 +176,19 @@ namespace ColorConfig
             AddCheckBoxLabel(EnableRGBSliders);
             AddCheckBoxLabel(EnableHSVSliders);
             AddCheckBoxLabel(CopyPasteForSliders);
+            //AddCheckBoxLabel(DisableHueSliderMaxClamp);
 
             //RIGHT SIDE
             ResetControl(325);
             //Utility
             AddHeader("Utility", false);
             AddCheckBoxLabel(EnableHexCodeTypers);
+            AddCheckBoxLabel(EnableExpeditionColorConfig);
 
             //OPColorPicker
             AddHeader("Color Pickers");
             AddCheckBoxLabel(EnableBetterOPColorPicker);
-            AddCheckBoxLabel(EnableDifferentOpColorPickerHSLPos);
+            AddCheckBoxLabel(EnableDiffOpColorPickerHSL);
             AddCheckBoxLabel(HSL2HSVOPColorPicker);
             AddCheckBoxLabel(CopyPasteForColorPickerNumbers);
 
@@ -231,14 +196,13 @@ namespace ColorConfig
             AddHeader("Legacy");
             AddCheckBoxLabel(EnableLegacyIdeaSlugcatDisplay);
             AddCheckBoxLabel(EnableLegacySSMSliders);
+            AddCheckBoxLabel(EnableLegacyHexCodeTypers);
             DrawAllPendingUI(ref Tabs[0]);
 
             //NEWTAB LEFT
             ResetControl();
             AddHeader("Mod Support", false);
-            //AddCheckBoxLabel(RMStoryMenuSlugcatFix);
             AddCheckBoxLabel(LukkyRGBJollySliderMeansBusiness);
-            //AddCheckBoxLabel(DisableHueSliderMaxClamp);
             DrawAllPendingUI(ref Tabs[1]);
 
         }
@@ -248,7 +212,7 @@ namespace ColorConfig
         }
         public void AddModStuff()
         {
-            OpLabel opLabel = new(new Vector2(600, 580), new(70, 10), "version: " + SmallUtils.version);
+            OpLabel opLabel = new(new Vector2(600, 580), new(70, 10), "version: " + ColorConfigMod.version);
             opLabel.PosX -= opLabel.GetDisplaySize().x + 10;
             AddPendingUI(opLabel);
         }
@@ -279,9 +243,9 @@ namespace ColorConfig
             AddPendingUI(dragger, label);
             control.y -= 40;
         }
-        public void AddEnumList<T>(Configurable<T> config, float width = 130)
+        public void AddEnumList(ConfigurableBase config, float width = 130)
         {
-            if (!config.settingType.IsEnumORExtEnum())
+            if (!config.settingType.IsEnum && !config.settingType.IsExtEnum())
             {
                 throw new NotImplementedException();
             }
@@ -295,9 +259,9 @@ namespace ColorConfig
             AddPendingUI(list, label);
             control.y -= y + 40;
         }
-        public void AddEnumSelector<T>(Configurable<T> config, float width = 130, bool followListSize = true)
+        public void AddEnumSelector(ConfigurableBase config, float width = 130, bool followListSize = true)
         {
-            if (!config.settingType.IsEnumORExtEnum())
+            if (!config.settingType.IsEnum && !config.settingType.IsExtEnum())
             {
                 throw new NotImplementedException();
             }
@@ -350,6 +314,7 @@ namespace ColorConfig
             }
         }
         public static bool ShowVisual => EnableVisualisers.Value;
+        public static bool PickerHSVMode => HSL2HSVOPColorPicker.Value;
         public static bool ShouldAddSSMLegacySliders => EnableLegacySSMSliders.Value && AllSlidersAdded.Count(x => x == true) > 1;
         public static bool ShouldRemoveHSLSliders => RemoveHSLSliders.Value && OtherCustomSlidersAdded.Any(x => x == true);
         public static bool EnableJollyRGBSliders => EnableRGBSliders.Value || FollowLukkyRGBSliders;
@@ -363,9 +328,10 @@ namespace ColorConfig
         public static Configurable<bool> EnableRGBSliders { get; private set; }
         public static Configurable<bool> EnableHSVSliders { get; private set; }
         public static Configurable<bool> EnableHexCodeTypers { get; private set; }
+        public static Configurable<bool> EnableExpeditionColorConfig { get; private set; }
         public static Configurable<bool> EnableColorPickers { get; private set; }
         public static Configurable<bool> HSL2HSVOPColorPicker { get; private set; }
-        public static Configurable<bool> EnableDifferentOpColorPickerHSLPos { get; private set; }
+        public static Configurable<bool> EnableDiffOpColorPickerHSL { get; private set; }
         public static Configurable<bool> EnableBetterOPColorPicker { get; private set; }
         public static Configurable<bool> IntToFloatColorValues { get; private set; }
         public static Configurable<bool> DisableHueSliderMaxClamp { get; private set; }
@@ -373,7 +339,7 @@ namespace ColorConfig
         public static Configurable<bool> CopyPasteForColorPickerNumbers{ get; private set; }
         public static Configurable<bool> EnableLegacyIdeaSlugcatDisplay { get; private set; }
         public static Configurable<bool> EnableLegacySSMSliders { get; private set; }
-        public static Configurable<bool> RMStoryMenuSlugcatFix { get; private set; }
+        public static Configurable<bool> EnableLegacyHexCodeTypers { get; private set; }
         public static Configurable<bool> LukkyRGBJollySliderMeansBusiness { get; private set; }
 
         public const float sBoxLXOffset = 35;
@@ -387,7 +353,7 @@ namespace ColorConfig
             }
             public int min = min, max = max;
         }
-        public class GenericAcceptable<T> : ConfigAcceptableBase
+        public abstract class GenericAcceptable<T> : ConfigAcceptableBase
         {
             public GenericAcceptable() : base(typeof(T))
             {
@@ -403,16 +369,9 @@ namespace ColorConfig
             }
             public override object Clamp(object value)
             {
-                if (IsValid(value))
-                {
-                    return ClampT((T)value);
-                }
-                return value;
+                return IsValid(value)? ClampT((T)value) : value;
             }
-            public virtual T ClampT(T value)
-            {
-                return value;
-            }
+            public abstract T ClampT(T value);
         }
     }
 
