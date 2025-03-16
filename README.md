@@ -10,15 +10,7 @@ IF custom slugcat first body part and second body part is not found, it will aut
 
 SO FOR SIMPLICITY name your files as what the mod tries to find first
 
-else if you want to add your own custom name, make sure to type this format in one line
-//vvvvvvvv
-
-"SLUGCATNAME:BODYPART|FILENAME,BODYPART2|FILENAME2"
-
-SlugcatNAME and BODYPART must be case-sensitive. if there are no folder names, it defaults searching in illustration folders, if you want to search in a specific folder, use "FOLDERNAME/FILENAME"
-
-//for example vvvvv
-
-White:Body|FILENAMEHERE,Eyes|FILENAMEHERE2
-
-Yellow:Body|FOLDERNAME/FILENAME,Eyes|FOLDERNAME/SUBFOLDERNAME/FILENAME
+else if you want to add your own custom name, formatexamples:
+"SLUGCATNAME:BODYPART|FILENAME,BODYPART2|FOLDERNAME/FILENAME2"
+"SLUGCATNAME:BODYPART|FOLDERNAME/FOLDERNAME/FILENAME"
+SLUGCATNAME and BODYPART must be case-sensitive. (this custom names will not work as intended for a slugcat with bodyparts sharing the same name)
