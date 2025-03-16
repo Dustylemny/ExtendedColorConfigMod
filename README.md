@@ -13,4 +13,6 @@ SO FOR SIMPLICITY name your files as what the mod tries to find first
 else if you want to add your own custom name, formatexamples:
 "SLUGCATNAME:BODYPART|FILENAME,BODYPART2|FOLDERNAME/FILENAME2"
 "SLUGCATNAME:BODYPART|FOLDERNAME/FOLDERNAME/FILENAME"
-SLUGCATNAME and BODYPART must be case-sensitive. (this custom names will not work as intended for a slugcat with bodyparts sharing the same name)
+
+
+Reminder, SLUGCATNAME and BODYPART must be case-sensitive and adding custom texture will not work as intended for a slugcat with bodyparts sharing the same name
