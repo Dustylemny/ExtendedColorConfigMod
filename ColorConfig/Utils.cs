@@ -12,9 +12,8 @@ using MonoMod.Cil;
 using System.Reflection;
 using MonoMod.RuntimeDetour;
 using static ColorConfig.ColConversions;
-using static ColorConfig.ColorConfigHooks.SlugcatSelectMenuHooks;
-using static ColorConfig.ColorConfigHooks.ExpeditionMenuHooks;
-using Menu.Remix.MixedUI.ValueTypes;
+using static ColorConfig.MenuInterfaces;
+using static ColorConfig.ExtraInterfaces;
 
 namespace ColorConfig
 {
@@ -123,6 +122,26 @@ namespace ColorConfig
             }
         }
         //for faster getting collection values
+        public static void AddToArray<T>(this T newObj, ref T[] array)
+        {
+            if (array != null)
+            {
+                List<T> list = [.. array];
+                list.Add(newObj);
+                array = [.. list];
+            }
+
+        }
+        public static void RemoveToArray<T>(this T newObj, ref T[] array)
+        { 
+            if (array != null && newObj != null && array.Contains(newObj))
+            {
+                List<T> list = [..array];
+                list.Remove(newObj);
+                array = [.. list];
+            }
+            
+        }
         public static void AddOrReplace<K, V>(this IDictionary<K, V> list, K key, V value)
         {
             if (list == null)
@@ -223,7 +242,7 @@ namespace ColorConfig
         }
 
         //For inputs
-        public static MenuInterfaces.ExtraFixedMenuInput GetFixedExtraMenuInput()
+        public static ExtraFixedMenuInput GetFixedExtraMenuInput()
         {
             bool ctrl = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl),
                 cpy = ctrl && Input.GetKey(KeyCode.C),
@@ -282,7 +301,30 @@ namespace ColorConfig
         }
 
         //extra menu stuff
-        public static void ApplyPerPage(this MenuInterfaces.IDoPerPage perPage, int max, Action<int> action)
+        public static void UpdateExtraInterfaces(this object obj)
+        {
+            (obj as IGetOwnInput).GetOwnInput();
+            (obj as ICopyPasteConfig).CopyPaste();
+        }
+        public static void GetOwnInput(this IGetOwnInput non_MouseInput)
+        {
+            non_MouseInput?.TryGetInput(ColorConfigMod.pMInput, ColorConfigMod.lastPMInput);
+        }
+        public static void CopyPaste(this ICopyPasteConfig copyPasteConfig)
+        {
+            if (copyPasteConfig != null && copyPasteConfig.ShouldCopyPaste)
+            {
+                if (CopyShortcutPressed())
+                {
+                    copyPasteConfig.Clipboard = copyPasteConfig.Copy();
+                }
+                if (PasteShortcutPressed())
+                {
+                    copyPasteConfig.Paste(copyPasteConfig.Clipboard);
+                }
+            }
+        }
+        public static void ApplyPerPage(this IDoPerPage perPage, int max, Action<int> action)
         {
             if (perPage == null)
             {
@@ -295,7 +337,7 @@ namespace ColorConfig
                 num++;
             }
         }
-        public static void ApplyPerPageList<T>(this MenuInterfaces.IDoPerPage perPage, IList<T> list, Action<T, int> action)
+        public static void ApplyPerPageList<T>(this IDoPerPage perPage, IList<T> list, Action<T, int> action)
         {
             if (perPage == null)
             {
@@ -308,10 +350,10 @@ namespace ColorConfig
                 num++;
             }
         }
-        public static int NextPageLoopListPerPage<T>(this MenuInterfaces.IDoPerPage perPage, IList<T> list) => (list == null || list.Count == 0 || perPage.CurrentOffset + 1 > (list.Count - 1) / perPage.PerPage) ? 0 : perPage.CurrentOffset + 1;
-        public static int PrevPageLoopListPerPage<T>(this MenuInterfaces.IDoPerPage perPage, IList<T> list) => (perPage.CurrentOffset - 1 < 0 ? list?.Count > 0 ? (list.Count - 1) / perPage.PerPage : 0 : perPage.CurrentOffset - 1);
-        public static int NextPageLoopList<T>(this MenuInterfaces.ICanTurnPages turnPages, IList<T> list) => list == null || list.Count == 0 || turnPages.CurrentOffset + 1 >= list.Count ? 0 : turnPages.CurrentOffset + 1;
-        public static int PrevPageLoopList<T>(this MenuInterfaces.ICanTurnPages turnPages, IList<T> list) => turnPages.CurrentOffset - 1 < 0 ? list?.Count > 0 ? list.Count - 1 : 0 : turnPages.CurrentOffset - 1;
+        public static int NextPageLoopListPerPage<T>(this IDoPerPage perPage, IList<T> list) => (list == null || list.Count == 0 || perPage.CurrentOffset + 1 > (list.Count - 1) / perPage.PerPage) ? 0 : perPage.CurrentOffset + 1;
+        public static int PrevPageLoopListPerPage<T>(this IDoPerPage perPage, IList<T> list) => (perPage.CurrentOffset - 1 < 0 ? list?.Count > 0 ? (list.Count - 1) / perPage.PerPage : 0 : perPage.CurrentOffset - 1);
+        public static int NextPageLoopList<T>(this ICanTurnPages turnPages, IList<T> list) => list == null || list.Count == 0 || turnPages.CurrentOffset + 1 >= list.Count ? 0 : turnPages.CurrentOffset + 1;
+        public static int PrevPageLoopList<T>(this ICanTurnPages turnPages, IList<T> list) => turnPages.CurrentOffset - 1 < 0 ? list?.Count > 0 ? list.Count - 1 : 0 : turnPages.CurrentOffset - 1;
 
         //menu stuff
         public static void ClearMenuObjectDictionary<T, E>(this MenuObject container, ref Dictionary<T, E> dictionary, bool refresh = false) where T : MenuObject
@@ -479,6 +521,11 @@ namespace ColorConfig
         }
 
         //ssmstuff
+        public static SlugcatStats.Name StorySlugcat(this SlugcatSelectMenu ssM)
+        {
+            //returns body part interface's slugcat id if not null, just incase another mod alters the interface which is different from slugcat page
+            return ssM.colorInterface != null ? ssM.colorInterface.slugcatID : ssM.slugcatColorOrder[ssM.slugcatPageIndex];
+        }
         public static ExtraSSMInterfaces GetExtraSSMInterface(this SlugcatSelectMenu ssM) => ColorConfigMod.extraSSMInterfaces.GetValue(ssM, (SlugcatSelectMenu _) => new());
         public static List<Vector3> SlugcatSelectMenuHSLs(this SlugcatSelectMenu ssM) => ssM.MenuHSLs(ssM.StorySlugcat());
         public static Vector3 SlugcatSelectMenuHSL(this SlugcatSelectMenu ssM)
@@ -519,7 +566,7 @@ namespace ColorConfig
             }
             ColorConfigMod.DebugWarning("Failed to save color choices due to index being more than body count!");
         }
-        public static void AddSSMSliderIDGroups(List<MenuInterfaces.SliderIDGroup> IDGroups, bool shouldRemoveHSL)
+        public static void AddSSMSliderIDGroups(List<SliderIDGroup> IDGroups, bool shouldRemoveHSL)
         {
             if (!shouldRemoveHSL)
             {
@@ -537,10 +584,7 @@ namespace ColorConfig
                    MenuToolObj.HSVNames, MenuToolObj.HueOOShowInt, MenuToolObj.hueOOMultipler, MenuToolObj.HueOOSigns));
             }
         }
-        public static SlugcatStats.Name StorySlugcat(this SlugcatSelectMenu ssM)
-        {
-            return ssM.colorInterface != null ? ssM.colorInterface.slugcatID : ssM.slugcatColorOrder[ssM.slugcatPageIndex];
-        }
+      
         public static Vector2 BaseScreenColorInterfacePos(this ProcessManager manager)
         {
             if (manager == null)
@@ -555,18 +599,18 @@ namespace ColorConfig
         {
             return [colSlider.hueSlider, colSlider.satSlider, colSlider.litSlider];
         }
-        public static MenuInterfaces.JollyCoopOOOConfig GetExtraJollyInterface(this ColorChangeDialog.ColorSlider colSlider, /*int bodyPart,*/ bool removeHSL, bool addHexInterface)
+        public static JollyCoopOOOConfig GetExtraJollyInterface(this ColorChangeDialog.ColorSlider colSlider, /*int bodyPart,*/ bool removeHSL, bool addHexInterface)
         {
             return ColorConfigMod.extraJollyInterfaces.GetValue(colSlider, (ColorChangeDialog.ColorSlider _) =>
             {
-                MenuInterfaces.JollyCoopOOOConfig config = new(colSlider.menu, colSlider, /*bodyPart,*/ removeHSL, addHexInterface);
+                JollyCoopOOOConfig config = new(colSlider.menu, colSlider, /*bodyPart,*/ removeHSL, addHexInterface);
                 colSlider.subObjects.Add(config);
                 return config;
             });
         }
         public static void RemoveExtraJollyInterface(this ColorChangeDialog.ColorSlider colSlider)
         {
-            if (ColorConfigMod.extraJollyInterfaces.TryGetValue(colSlider, out MenuInterfaces.JollyCoopOOOConfig configPage))
+            if (ColorConfigMod.extraJollyInterfaces.TryGetValue(colSlider, out JollyCoopOOOConfig configPage))
             {
                 if (configPage != null)
                 {
@@ -583,11 +627,11 @@ namespace ColorConfig
             return ColorConfigMod.extraEXPInterfaces.GetValue(charSelectPage, (CharacterSelectPage _) => new());
         }
         public static SlugcatStats.Name ExpeditionSlugcat() => Expedition.ExpeditionData.slugcatPlayer;
-        public static Vector3 ExpeditionHSL(this MenuInterfaces.ExpeditionColorDialog self)
+        public static Vector3 ExpeditionHSL(this ExpeditionColorDialog self)
         {
             return self.MenuHSL(self.id, self.colorChooser);
         }
-        public static void AddEXPSliderIDGroups(List<MenuInterfaces.SliderIDGroup> IDGroups, bool shouldRemoveHSL)
+        public static void AddEXPSliderIDGroups(List<SliderIDGroup> IDGroups, bool shouldRemoveHSL)
         {
             if (!shouldRemoveHSL)
             {
@@ -605,6 +649,125 @@ namespace ColorConfig
         //opconfig stuff
         public static bool IsMouseMode(this UIconfig config) => config.CurrentlyFocusableMouse && config.MenuMouseMode;
         //opcolor picker stuff
+        public static ColorPickerExtras GetColorPickerExtras(this OpColorPicker cPicker)
+        {
+            return ColorConfigMod.extraColorPickerStuff.GetValue(cPicker, (_) => new(cPicker));
+        }
+        public static bool IsHSVMode(this OpColorPicker cPicker)
+        {
+            return cPicker.GetColorPickerExtras()._IsHSVMode;
+        }
+        public static bool IsDiffHSLHSVMode(this OpColorPicker cPicker)
+        {
+            return cPicker.GetColorPickerExtras().IsDifferentHSVHSLMode;
+        }
+        public static void SwitchHSLCustomMode(this OpColorPicker self)
+        {
+            //switch hsl, hsl_diff, hsv, hsv_diff if all except betterColorPickers. else hsl, hsv_diff. hsl, hsv if only HSV mode. hsl, hsl_diff if only diff
+            // so if diff is on, it just switches, hsv switches if diff is off or _diff is on
+            // allow change if ex: diff is off but _diff is still on
+            self.GetColorPickerExtras().IsHSVMode = (!ModOptions.PickerHSVMode && !self.GetColorPickerExtras().IsHSVMode) || (!ModOptions.EnableBetterOPColorPicker.Value && ModOptions.EnableDiffOpColorPickerHSL.Value && !self.GetColorPickerExtras().IsDifferentHSVHSLMode) ? self.GetColorPickerExtras().IsHSVMode : !self.GetColorPickerExtras().IsHSVMode;
+            self.GetColorPickerExtras().IsDifferentHSVHSLMode = !ModOptions.EnableDiffOpColorPickerHSL.Value && !self.GetColorPickerExtras().IsDifferentHSVHSLMode ? self.GetColorPickerExtras().IsDifferentHSVHSLMode : !self.GetColorPickerExtras().IsDifferentHSVHSLMode;
+            self.PlaySound(SoundID.MENU_Player_Join_Game);
+        }
+        public static bool OpColorPickerPatchMiniFocusHSLColor(this OpColorPicker self, int hueSat, int satLit, int litHue, bool squareTexture)
+        {
+            Vector3Int hsvHSL = self.GetHSVOrHSL100();
+            int h = hsvHSL.x, s = hsvHSL.y, l = hsvHSL.z;
+            if (self.IsDiffHSLHSVMode()) //HueSat becomes SatLit and Lit becomes Hue
+            {
+                hueSat = squareTexture ? Mathf.RoundToInt(Mathf.Clamp(self.MousePos.x - 10f, 0f, 100f)) : hueSat;
+                litHue = litHue > 99 ? 99 : litHue;
+                h = squareTexture ? h : litHue;
+                s = squareTexture ? hueSat : s;
+                l = squareTexture ? satLit : l;
+                self._lblR.text = h.ToString();
+                self._lblG.text = s.ToString();
+                self._lblB.text = l.ToString();
+                self._cdis1.color = self.ColorPicker2RGB().Invoke(new(h / 100f, s / 100f, l/ 100f));
+                self.SetHSLORHSV100(h, s, l);
+                return true;
+            }
+            else if (self.IsHSVMode())
+            {
+                h = squareTexture ? hueSat : h;
+                s = squareTexture ? satLit : s;
+                l = squareTexture ? l : litHue;
+                self._cdis1.color = self.ColorPicker2RGB().Invoke(new(h / 100f, s / 100f, l/ 100f));
+            }
+            return false;
+        }
+        public static void OpColorPickerPatchHoverMouseHSLColor(this OpColorPicker self, int hueSat, int satLit, int litHue, bool squareTexture)
+        {
+            Vector3Int hsvHSL = self.GetHSVOrHSL100();
+            int h = hsvHSL.x, s = hsvHSL.y, l = hsvHSL.z;
+            if (self.IsDiffHSLHSVMode()) //When mouse just hovers over texture
+            {
+                hueSat = squareTexture ? Mathf.RoundToInt(Mathf.Clamp(self.MousePos.x - 10f, 0f, 100f)) : hueSat;
+                litHue = litHue > 99 ? 99 : litHue;
+                h = squareTexture ? h : litHue;
+                s = squareTexture ? hueSat : s;
+                l = squareTexture ? satLit : l;
+                self._lblR.text = h.ToString();
+                self._lblG.text = s.ToString();
+                self._lblB.text = l.ToString();
+                self._cdis1.color = self.ColorPicker2RGB().Invoke(new(h / 100f, s / 100f, l / 100f));
+            }
+            else if (self.IsHSVMode())
+            {
+                h = squareTexture ? hueSat : h;
+                s = squareTexture ? satLit : s;
+                l = squareTexture ? l : litHue;
+                self._cdis1.color = self.ColorPicker2RGB().Invoke(new(h / 100f, s / 100f, l / 100f));
+            }
+        }
+        public static Func<Vector3, Color> ColorPicker2RGB(this OpColorPicker cPicker)
+        {
+            return cPicker.IsHSVMode() ? ColConversions.HSV2RGB : ColConversions.HSL2RGB;
+        }
+        public static void ChangeHSLHSVMode(this OpColorPicker cPicker, bool changeToHSV)
+        {
+            if (cPicker != null)
+            {
+                cPicker._lblHSL.text = changeToHSV ? "HSV" : "HSL";
+                Vector3 hslHSV100 = ((Func<Vector3, Vector3>)(changeToHSV ? HSL1002HSV100 : HSV1002HSL100)).Invoke(cPicker.GetHSL());
+                cPicker._h = Mathf.RoundToInt(hslHSV100.x);
+                cPicker._s = Mathf.RoundToInt(hslHSV100.y);
+                cPicker._l = Mathf.RoundToInt(hslHSV100.z);
+            }
+        }
+        public static void RefreshText(this OpColorPicker cPicker)
+        {
+            if (cPicker != null && cPicker._mode != OpColorPicker.PickerMode.Palette)
+            {
+                Vector3Int hsvHSL = cPicker.GetHSVOrHSL100();
+                cPicker._lblR.text = (cPicker._mode == OpColorPicker.PickerMode.RGB? cPicker._r : hsvHSL.x).ToString();
+                cPicker._lblG.text = (cPicker._mode == OpColorPicker.PickerMode.RGB ? cPicker._g : hsvHSL.y).ToString();
+                cPicker._lblB.text = (cPicker._mode == OpColorPicker.PickerMode.RGB ? cPicker._b : hsvHSL.z).ToString();
+            }
+        }
+        public static void RefreshTexture(this OpColorPicker cPicker)
+        {
+            if (cPicker != null)
+            {
+                cPicker._RecalculateTexture();
+                if (cPicker._mode == OpColorPicker.PickerMode.RGB)
+                {
+                    cPicker._ftxr1.SetTexture(cPicker._ttre1);
+                    cPicker._ftxr2.SetTexture(cPicker._ttre2);
+                    cPicker._ftxr3.SetTexture(cPicker._ttre3);
+                }
+                else if (cPicker._mode == OpColorPicker.PickerMode.HSL)
+                {
+                    cPicker._ftxr1.SetTexture(cPicker._ttre1);
+                    cPicker._ftxr2.SetTexture(cPicker._ttre2);
+                }
+                else
+                {
+                    cPicker._ftxr2.SetPosition(OpColorPicker._GetPICenterPos(cPicker._pi));
+                }
+            }
+        }
         public static Vector3Int GetHSL(this OpColorPicker cPicker)
         {
             return new(cPicker._h, cPicker._s, cPicker._l);
@@ -613,9 +776,9 @@ namespace ColorConfig
         {
             return new(cPicker._h / 100f, cPicker._s / 100f, cPicker._l / 100f);
         }
-        public static Vector3 GetHSVOrHSL100(this OpColorPicker cPicker)
+        public static Vector3Int GetHSVOrHSL100(this OpColorPicker cPicker)
         {
-            return  cPicker.GetHSL();
+            return cPicker.GetHSL();
         }
         public static Vector3 GetHSVOrHSL01(this OpColorPicker cPicker)
         {
@@ -631,12 +794,12 @@ namespace ColorConfig
             Vector3 hsvHSL = cPicker.GetHSVOrHSL100();
             return new(h.GetValueOrDefault(hsvHSL.x), s.GetValueOrDefault(hsvHSL.y), l.GetValueOrDefault(hsvHSL.z));
         }
-        public static void SetHSLORHSV100(this OpColorPicker cPicker, float? h, float? s, float? l)
+        public static void SetHSLORHSV100(this OpColorPicker cPicker, float h, float s, float l)
         {
             Vector3 hsvHSL100 = cPicker.GetHSVOrHSL100();
-            if (h?.Equals(hsvHSL100.x) == false || s?.Equals(hsvHSL100.y) == false|| l?.Equals(hsvHSL100.z) == false)
+            if (h != hsvHSL100.x || s != hsvHSL100.y || l != hsvHSL100.z)
             {
-                cPicker.SetDirectHSLORHSV100(Mathf.RoundToInt(h ?? hsvHSL100.x), Mathf.RoundToInt(s ?? hsvHSL100.y), Mathf.RoundToInt(l ?? hsvHSL100.z));
+                cPicker.SetDirectHSLORHSV100(Mathf.RoundToInt(h), Mathf.RoundToInt(s), Mathf.RoundToInt(l));
                 cPicker.PlaySound(SoundID.MENU_Scroll_Tick);
                 cPicker._HSLSetValue();
             }
@@ -771,17 +934,16 @@ namespace ColorConfig
             }
 
         }
-        public static Color FindHSLArrowColor(this OpColorPicker cPicker)
+        public static void ApplyHSLArrows(this OpColorPicker self)
         {
-            if (cPicker != null)
-            {
-                Color result = new(1 - cPicker._r / 100f, 1f - cPicker._g / 100f, 1f - cPicker._b / 100f);
-                result = Color.Lerp(Color.white, result, Mathf.Pow(Mathf.Abs(result.grayscale - 0.5f) * 2f, 0.3f));
-                return result;
-            }
-            return default;
+            bool diff = self.IsDiffHSLHSVMode();
+            Vector3Int hsvHSL = self.GetHSVOrHSL100();
+            Color hueArrowCol = FindHSLArrowColor(self);
+            ApplyHSLArrow(self._ttre1, diff? hsvHSL.y : hsvHSL.x, hueArrowCol, false, diff ? hsvHSL.z : hsvHSL.y); //first leftright arrow, diff -> s, h
+            ApplyHSLArrow(self._ttre1, diff ? hsvHSL.z : hsvHSL.y, hueArrowCol, true, diff ? hsvHSL.y : hsvHSL.x); //second downright arrow square texture, diff -> l, s
+            ApplyHSLArrow(self._ttre2, diff ? hsvHSL.x : hsvHSL.z, hueArrowCol, true, 51); //last rect texture, diff -> h, l
         }
-        public static void ApplyHSLArrows(Texture2D texture, int oOO, Color arrowColor, bool moveUpDown, int positioner = 0)
+        public static void ApplyHSLArrow(Texture2D texture, int oOO, Color arrowColor, bool moveUpDown, int positioner = 0)
         {
             if (texture == null)
             {
@@ -798,6 +960,16 @@ namespace ColorConfig
                 }
 
             }
+        }
+        public static Color FindHSLArrowColor(this OpColorPicker cPicker)
+        {
+            if (cPicker != null)
+            {
+                Color result = new(1 - cPicker._r / 100f, 1f - cPicker._g / 100f, 1f - cPicker._b / 100f);
+                result = Color.Lerp(Color.white, result, Mathf.Pow(Mathf.Abs(result.grayscale - 0.5f) * 2f, 0.3f));
+                return result;
+            }
+            return default;
         }
         //slider wonkiness (Assuming one slider is dragged only)
         public static Vector3 FixNonHueSliderWonkiness(Vector3 pendingHSL, Vector3 currentHSL)
@@ -909,15 +1081,35 @@ namespace ColorConfig
         {
             return value.x <= compare.x && value.y <= compare.y;
         }
+        public static float SafeGetDivideMultipler(float multipler, float defalt = 1)
+        {
+            if (multipler == 0)
+            {
+                multipler = defalt;
+            }
+            return multipler;
+        }
     }
     public static class ColConversions
     {
+        public static Vector3 HSL1002HSV100(Vector3 hsl)
+        {
+            float val = hsl.z + hsl.y * (Mathf.Min(hsl.z, 100 - hsl.z) / 100);
+            float sat = val == 0 ? 0 : 200 * (1 - (hsl.z / val));
+            return new(hsl.x, sat, val);
+        }
+        public static Vector3 HSV1002HSL100(Vector3 hsv)
+        {
+            float lit = hsv.z * (1 - (hsv.y / 200));
+            float sat = lit == 0 || lit == 100 ? 0 : (hsv.z - lit) / (Mathf.Min(lit, 100 - lit) / 100);
+            return new(hsv.x, sat, lit);
+        }
         public static Color HSV2RGB(Vector3 hsv) => Color.HSVToRGB(hsv.x == 1 ? 0 : hsv.x, hsv.y, hsv.z);
         public static Color HSL2RGB(Vector3 hsl) => Custom.HSL2RGB(hsl.x == 1 ? 0 : hsl.x, hsl.y, hsl.z);
         public static Vector3 HSV2HSL(Vector3 hsv)
         {
             float lit = hsv.z * (1 - (hsv.y / 2));
-            float sat = lit == 0 || lit == 1 ? 0 : (hsv.z - lit) / Mathf.Min(lit, 1 - lit);
+            float sat = lit == 0 || lit == 1 ? 0 : (hsv.z - lit) / (Mathf.Min(lit, 1 - lit));
             return new(hsv.x, sat, lit);
         }
         public static Vector3 RGB2HSV(Color rgb)
@@ -928,7 +1120,7 @@ namespace ColorConfig
         public static Vector3 HSL2HSV(Vector3 hsl)
         {
             float val = hsl.z + hsl.y * Mathf.Min(hsl.z, 1 - hsl.z);
-            float sat = val == 0 ? 0 : 2 * (1 - (hsl.z / val));
+            float sat = val == 0 ? 0 : 2 * 1 * (1 - (hsl.z / val));
             return new(hsl.x, sat, val);
         }
         public static string RGB2Hex(this Color rgb) => ColorUtility.ToHtmlStringRGB(rgb);

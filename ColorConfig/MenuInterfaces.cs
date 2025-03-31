@@ -9,6 +9,7 @@ using Menu.Remix.MixedUI;
 using JollyCoop.JollyMenu;
 using RWCustom;
 using UnityEngine;
+using static ColorConfig.MenuInterfaces;
 
 namespace ColorConfig
 {
@@ -310,8 +311,8 @@ namespace ColorConfig
                         borders.Add(bodyColorBorder);
                         bodyColors.Add(bodyColor, num);
                     });
-                    buttons.FirstOrDefault().MutualMenuObjectBind(prevButton, false, true);
-                    buttons.LastOrDefault().MutualMenuObjectBind(nextButton, true, true);
+                    buttons.FirstOrDefault().MutualMenuObjectBind(prevNextButton?.prevButton, false, true);
+                    buttons.LastOrDefault().MutualMenuObjectBind(prevNextButton?.nextButton, true, true);
                     bodyButtons = [.. buttons];
                     bodyColorBorders = [.. borders];
                     (menu as ExpeditionColorDialog)?.RemoveColorInterface();
@@ -336,30 +337,23 @@ namespace ColorConfig
                 }
                 public void ActivateButtons()
                 {
-                    if (prevButton == null)
+                    if (prevNextButton == null)
                     {
-                        prevButton = new(menu, this, "colorconfig_PrevColorInterface", PREVSINGAL, new(-34, -50));
-                        subObjects.Add(prevButton);
+                        prevNextButton = new(menu, this, new(-34, -50), PREVSINGAL, NEXTSINGAL, new(20 + perPage * 80, 0), true);
+                        subObjects.Add(prevNextButton);
                     }
-                    if (nextButton == null)
-                    {
-                        nextButton = new(menu, this, "colorconfig_NextColorInterface", NEXTSINGAL, new(prevButton.pos.x + 54 + (perPage * 80), prevButton.pos.y));
-                        subObjects.Add(nextButton);
-                    }
-                    menu.MutualHorizontalButtonBind(prevButton, nextButton);
-                    bodyButtons.FirstOrDefault().MutualMenuObjectBind(prevButton, false, true);
-                    bodyButtons.LastOrDefault().MutualMenuObjectBind(nextButton, true, true);
+                    bodyButtons.FirstOrDefault().MutualMenuObjectBind(prevNextButton.prevButton, false, true);
+                    bodyButtons.LastOrDefault().MutualMenuObjectBind(prevNextButton.nextButton, true, true);
                 }
                 public void DeactivateButtons()
                 {
-                    this.ClearMenuObject(ref prevButton);
-                    this.ClearMenuObject(ref nextButton);
+                    this.ClearMenuObject(ref prevNextButton);
                 }
 
                 public const string OPENINTERFACESINGAL = "DUSTYEXPEDITIONCUSTOMCOLOR", PREVSINGAL = "PrevPageColors_DUSTYEXPEDITIONCUSTOMCOLOR", NEXTSINGAL = "NextPageColors_DUSTYEXPEDITIONCUSTOMCOLOR";
                 private int perPage, currentOffset;
                 public SlugcatDisplay slugcatDisplay;
-                public SymbolButton prevButton, nextButton;
+                public PrevNextSymbolButton prevNextButton;
                 public SimpleButton[] bodyButtons;
                 public RoundedRect[] bodyColorBorders;
                 public SlugcatStats.Name slugcatID;
@@ -662,8 +656,8 @@ namespace ColorConfig
                     toBindWith = hexTypeBox.elementWrapper;
 
                 });
-                hexBoxes?.Keys?.FirstOrDefault()?.elementWrapper.MutualMenuObjectBind(prevButton, false, true);
-                hexBoxes?.Keys?.LastOrDefault()?.elementWrapper.MutualMenuObjectBind(nextButton, true, true);
+                hexBoxes?.Keys?.FirstOrDefault()?.elementWrapper.MutualMenuObjectBind(prevNextButton?.prevButton, false, true);
+                hexBoxes?.Keys?.LastOrDefault()?.elementWrapper.MutualMenuObjectBind(prevNextButton?.nextButton, true, true);
             }
             public HexTypeBox GetHexTypeBox(int num)
             {
@@ -681,24 +675,17 @@ namespace ColorConfig
             }
             public void ActivateButtons()
             {
-                if (prevButton == null)
+                if (prevNextButton == null)
                 {
-                    prevButton = new(menu, this, "colorconfig_PrevColorInterface", PREVSINGAL, new(0, 0));
-                    subObjects.Add(prevButton);
+                    prevNextButton = new(menu, this, Vector2.zero, PREVSINGAL, NEXTSINGAL, new(perPage * 70, 0), true);
+                    subObjects.Add(prevNextButton);
                 }
-                if (nextButton == null)
-                {
-                    nextButton = new(menu, this, "colorconfig_NextColorInterface", NEXTSINGAL, new(prevButton.pos.x + 34 + (perPage * 70), prevButton.pos.y));
-                    subObjects.Add(nextButton);
-                }
-                menu.MutualHorizontalButtonBind(prevButton, nextButton);
-                hexBoxes?.Keys?.FirstOrDefault()?.elementWrapper.MutualMenuObjectBind(prevButton, false, true);
-                hexBoxes?.Keys?.LastOrDefault()?.elementWrapper.MutualMenuObjectBind(nextButton, true, true);
+                hexBoxes?.Keys?.FirstOrDefault()?.elementWrapper.MutualMenuObjectBind(prevNextButton.prevButton, false, true);
+                hexBoxes?.Keys?.LastOrDefault()?.elementWrapper.MutualMenuObjectBind(prevNextButton.nextButton, true, true);
             }
             public void DeactivateButtons()
             {
-                this.ClearMenuObject(ref prevButton);
-                this.ClearMenuObject(ref nextButton);
+                this.ClearMenuObject(ref prevNextButton);
             }
             public override void RemoveSprites()
             {
@@ -711,7 +698,7 @@ namespace ColorConfig
             private int perPage, currentOffset;
             public List<string> names;
             public Dictionary<HexTypeBox, int> hexBoxes;
-            public SymbolButton prevButton, nextButton;
+            public PrevNextSymbolButton prevNextButton;
             public Action<HexTypeBox, Vector3, Color, int> applyChanges;
         }
         public class OOOSliders : PositionedMenuObject
@@ -894,8 +881,6 @@ namespace ColorConfig
                 double amt = Math.Round(visualValue, Mathf.Clamp(decimalPlaces, 0, 15), roundType);
                 return amt.ToString() + sign;
             }
-            public Player.InputPackage Input { get; set; } 
-            public Player.InputPackage LastInput { get; set; }
             public bool ShouldCopyPaste => ModOptions.CopyPasteForSliders.Value && CopyPasteSlider != null;
             public  string Clipboard
             {
@@ -1025,16 +1010,16 @@ namespace ColorConfig
                 this.ClearMenuObject(ref prevButton);
                 this.ClearMenuObject(ref nextButton);
             }
-            public virtual void TryGetInput()
+            public virtual void TryGetInput(Player.InputPackage input, Player.InputPackage lastInput)
             {
                 if (!menu.manager.menuesMouseMode && PagesOn && (prevButton?.Selected == true || nextButton?.Selected == true || sliderOOOs.Any(x => x.Selected)))
                 {
                     //changes to map and grab since normal ui input doesnt count it in menu in normal circumstances
-                    if (!Input.mp && LastInput.mp)
+                    if (!input.mp && lastInput.mp)
                     {
                         PrevPage();
                     }
-                    if (!Input.pckp && LastInput.pckp)
+                    if (!input.pckp && lastInput.pckp)
                     {
                         PrevPage();
                     }
@@ -1091,28 +1076,31 @@ namespace ColorConfig
             public BigSimpleButton prevButton, nextButton;
             public MidpointRounding roundingType;
         }
-        public struct SliderIDGroup(Slider.SliderID[] sliderIDs, string[] names = null, bool[] showInts = null, float[] multipler = null, string[] signs = null)
+        public class PrevNextSymbolButton : PositionedMenuObject
         {
-            public readonly float SafeMultipler(int index) => multipler.GetValueOrDefault(index, 1);
-            public readonly bool SafeShowInt(int index) => showInts.GetValueOrDefault(index, false);
-            public readonly string SafeNames(int index) => names.GetValueOrDefault(index, "");
-            public readonly string SafeSigns(int index) => signs.GetValueOrDefault(index, "");
-            public readonly Slider.SliderID SafeID(int index) => sliderIDs.GetValueOrDefault(index, new("DUSTY_REFISNULL", false));
-
-            public float[] multipler = multipler;
-            public bool[] showInts = showInts;
-            public string[] names = names, signs = signs;
-            public Slider.SliderID[] sliderIDs = sliderIDs;
-        }
-        public struct ExtraFixedMenuInput(bool cpy = false, bool paste = false)
-        {
-            public bool cpy = cpy, pste = paste;
+            public PrevNextSymbolButton(Menu.Menu menu, MenuObject owner, Vector2 pos, string prevSingal, string nextSingal, Vector2 nextButtonPosOffset, bool horizontal) : this(menu, owner, pos, "Menu_Symbol_Arrow", "Menu_Symbol_Arrow", prevSingal, nextSingal, nextButtonPosOffset, horizontal)
+            {
+                nextButton.symbolSprite.rotation = horizontal ? 90 : 0;
+                prevButton.symbolSprite.rotation = horizontal? 270 : 180;
+            }
+            public PrevNextSymbolButton(Menu.Menu menu, MenuObject owner, Vector2 pos, string prevSymbol, string nextSymbol, string prevSingal, string nextSingal, Vector2 nextButtonPosOffset, bool horizontal) : base(menu, owner, pos)
+            {
+                prevButton = new(menu, this, prevSymbol, prevSingal, Vector2.zero);
+                nextButton = new(menu, this, nextSymbol, nextSingal, new Vector2(horizontal ? 34 : 0, horizontal ? 0 : 34) + nextButtonPosOffset);
+                subObjects.AddRange([prevButton, nextButton]);
+                ((Action<MenuObject, MenuObject>)(horizontal ? menu.MutualHorizontalButtonBind : menu.MutualVerticalButtonBind)).Invoke(prevButton, nextButton);
+            }
+            public override void RemoveSprites()
+            {
+                base.RemoveSprites();
+                this.ClearMenuObject(ref prevButton);
+                this.ClearMenuObject(ref nextButton);
+            }
+            public SymbolButton prevButton, nextButton;
         }
         public interface IGetOwnInput
         {
-            Player.InputPackage Input { get; set; }
-            Player.InputPackage LastInput { get; set; }
-            void TryGetInput();
+            void TryGetInput(Player.InputPackage input, Player.InputPackage lastInput);
         }
         public interface IDoPerPage : ICanTurnPages
         {
@@ -1133,6 +1121,78 @@ namespace ColorConfig
             string Copy();
             void Paste(string clipboard);
 
+        }
+        public struct SliderIDGroup(Slider.SliderID[] sliderIDs, string[] names = null, bool[] showInts = null, float[] multipler = null, string[] signs = null)
+        {
+            public readonly float SafeMultipler(int index) => multipler.GetValueOrDefault(index, 1);
+            public readonly bool SafeShowInt(int index) => showInts.GetValueOrDefault(index, false);
+            public readonly string SafeNames(int index) => names.GetValueOrDefault(index, "");
+            public readonly string SafeSigns(int index) => signs.GetValueOrDefault(index, "");
+            public readonly Slider.SliderID SafeID(int index) => sliderIDs.GetValueOrDefault(index, new("DUSTY_REFISNULL", false));
+
+            public float[] multipler = multipler;
+            public bool[] showInts = showInts;
+            public string[] names = names, signs = signs;
+            public Slider.SliderID[] sliderIDs = sliderIDs;
+        }
+        public struct ExtraFixedMenuInput(bool cpy = false, bool paste = false)
+        {
+            public bool cpy = cpy, pste = paste;
+        }
+    }
+    public static class ExtraInterfaces
+    {
+        public class ExtraSSMInterfaces
+        {
+            public HexTypeBox hexInterface;
+            public SlugcatDisplay slugcatDisplay;
+            public SliderPages sliderPages;
+            //Legacy versions stuff
+            public OOOSliders legacySliders;
+            public HexTypeBoxPages legacyHexInterface;
+        }
+        public class ExtraExpeditionInterfaces
+        {
+            public SymbolButton colorConfig;
+        }
+        public class ColorPickerExtras(OpColorPicker cPicker)
+        {
+            public bool IsHSVMode 
+            {
+                get
+                {
+                    return _IsHSVMode;
+                }
+                set
+                {
+                    if (_IsHSVMode != value)
+                    {
+                        _IsHSVMode = value;
+                        cPicker.ChangeHSLHSVMode(_IsHSVMode);
+                        cPicker.RefreshTexture();
+                        cPicker.RefreshText();
+                    }
+                }
+            }
+            public bool IsDifferentHSVHSLMode
+            {
+                get
+                {
+                    return _IsDifferentHSLHSVMode;
+                }
+                set
+                {
+                    if (_IsDifferentHSLHSVMode != value)
+                    {
+                        _IsDifferentHSLHSVMode = value;
+                        cPicker.RefreshTexture();
+                    }
+
+                }
+            }
+            public OpColorPicker cPicker = cPicker;
+            public bool _IsHSVMode;
+            public bool _IsDifferentHSLHSVMode;
         }
     }
 }

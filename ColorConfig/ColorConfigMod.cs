@@ -1,6 +1,7 @@
 ﻿global using Vector2 = UnityEngine.Vector2;
 global using Vector3 = UnityEngine.Vector3;
 global using Color = UnityEngine.Color;
+global using OpCodes = Mono.Cecil.Cil.OpCodes;
 using System;
 using System.Linq;
 using System.Security.Permissions;
@@ -14,10 +15,9 @@ using BepInEx.Logging;
 using System.Diagnostics;
 using System.Reflection;
 using UnityEngine;
+using static ColorConfig.ExtraInterfaces;
 using static ColorConfig.MenuInterfaces;
-using static ColorConfig.ColorConfigHooks.SlugcatSelectMenuHooks;
-using static ColorConfig.ColorConfigHooks.ExpeditionMenuHooks;
-using static ColorConfig.ColorConfigHooks.OpConfigHooks;
+using static ColorConfig.ColorConfigHooks;
 #pragma warning disable CS0618
 
 [module: UnverifiableCode]
@@ -28,7 +28,7 @@ namespace ColorConfig
     [BepInPlugin(id, modName, version)]
     public sealed class ColorConfigMod : BaseUnityPlugin
     {
-        public const string id = "dusty.colorconfig", modName = "Extended Color Config", version = "1.3.4";
+        public const string id = "dusty.colorconfig", modName = "Extended Color Config", version = "1.3.6";
         public void OnEnable()
         {
             Logger = base.Logger;
@@ -102,11 +102,12 @@ namespace ColorConfig
         public static bool IsBingoOn { get; private set; }
         public static new ManualLogSource Logger { get; private set; }
 
+        public static Player.InputPackage pMInput = new(), lastPMInput = new();
         public static ExtraFixedMenuInput femInput = new(), lastFemInput = new();
-
         public static readonly ConditionalWeakTable<Menu.SlugcatSelectMenu, ExtraSSMInterfaces> extraSSMInterfaces = new();
         public static readonly ConditionalWeakTable<Menu.CharacterSelectPage, ExtraExpeditionInterfaces> extraEXPInterfaces = new();
         public static readonly ConditionalWeakTable<JollyCoop.JollyMenu.ColorChangeDialog.ColorSlider, JollyCoopOOOConfig> extraJollyInterfaces = new();
+        public static readonly ConditionalWeakTable<OpColorPicker, ColorPickerExtras> extraColorPickerStuff = new();
     }
     public sealed class ModOptions : OptionInterface
     {
@@ -146,12 +147,12 @@ namespace ColorConfig
             EnableBetterOPColorPicker = Bind("EnableBetterOPColorPicker", true, "Makes OP-ColorPicker selectors a bit less annoying.", "Enable less annoying OP-ColorPickers?");
             EnableDiffOpColorPickerHSL = Bind("EnableDifferentOPColorPicker", true, "Changes HueSat Square Picker in HSL/HSV Mode to SatLit Square picker and vice versa.", "Enable Different OP-ColorPickers?");
             HSL2HSVOPColorPicker = Bind("HSL2HSVOPColorPicker", true, "Replaces OP-ColorPickers' HSL mode to HSV mode.", "Enable HSV OP-ColorPickers?");
+            EnableRotatingOPColorPicker = Bind("EnableRotatingOPColorPicker", true, "Allows OP-ColorPickers to rotate between custom modes. Press on the HSL/HSV Button in HSL/HSV mode to change modes if respective options are on. 'Less annoying OP-ColorPickers' will make toggled HSL mode ignore 'Different OP-ColorPickers'", "Switch custom modes for OP-ColorPickers?");
             CopyPasteForColorPickerNumbers = Bind("CopyPatseOPColorPickerNumbers", false, "Allows copy paste for Color Picker numbers.", "Copy Paste OP-ColorPicker Numbers?");
 
             EnableLegacyIdeaSlugcatDisplay = Bind("EnableLegacySlugcatDisplay", true, "Makes slugcat display in story menu to appear when the custom color checkbox is checked\ninstead of when configuring colors.", "Enable Original Idea Slugcat Display?");
             EnableLegacySSMSliders = Bind("enableLegacyVersionSliders", false, "Overrides color sliders with a replica of the early versions in story menu.", "Enable Legacy Sliders?");
             EnableLegacyHexCodeTypers = Bind("EnableLegacyHexCodeTypes", false, "Overrides hex code typers with a slight replica of what I had planned at the start of this mod.", "Enable Legacy HexCode Typers?");
-          
             LukkyRGBJollySliderMeansBusiness = Bind("LukkyRGBSliderModActiveReason", true, "Removes HSL Sliders and adds RGB Sliders when RGB Sliders mod is on, else follows remix options.", "Follow what RGB Sliders mod intended to do?");
         }
         public override void Initialize()
@@ -190,6 +191,7 @@ namespace ColorConfig
             AddCheckBoxLabel(EnableBetterOPColorPicker);
             AddCheckBoxLabel(EnableDiffOpColorPickerHSL);
             AddCheckBoxLabel(HSL2HSVOPColorPicker);
+            AddCheckBoxLabel(EnableRotatingOPColorPicker);
             AddCheckBoxLabel(CopyPasteForColorPickerNumbers);
 
             //Legacy
@@ -333,6 +335,7 @@ namespace ColorConfig
         public static Configurable<bool> HSL2HSVOPColorPicker { get; private set; }
         public static Configurable<bool> EnableDiffOpColorPickerHSL { get; private set; }
         public static Configurable<bool> EnableBetterOPColorPicker { get; private set; }
+        public static Configurable<bool> EnableRotatingOPColorPicker { get; private set; }
         public static Configurable<bool> IntToFloatColorValues { get; private set; }
         public static Configurable<bool> DisableHueSliderMaxClamp { get; private set; }
         public static Configurable<bool> CopyPasteForSliders { get; private set; }
