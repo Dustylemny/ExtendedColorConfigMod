@@ -9,11 +9,11 @@ using RWCustom;
 using UnityEngine;
 using Mono.Cecil.Cil;
 using MonoMod.Cil;
-using static ColorConfig.MenuInterfaces;
-using static ColorConfig.ExtraInterfaces;
+using ColorConfig.MenuUI;
+using ColorConfig.WeakUITable;
 namespace ColorConfig
 {
-    public static class ColorConfigHooks
+    public static partial class ColorConfigHooks
     {
         public static void Init()
         {
@@ -22,13 +22,13 @@ namespace ColorConfig
             ExpeditionMenu_Hooks();
             JollyCoopMenu_Hooks();
             OpColorPicker_Hooks();
-
+            ExternalModHooks();
         }
         public static void Menu_Hooks()
         {
             try
             {
-                On.RainWorld.Update += On_RainWorld_Update;
+                On.Menu.Menu.Update += On_Menu_Update;
                 On.Menu.MenuObject.Update += On_MenuObject_Update;
                 ColorConfigMod.DebugLog("Successfully initialized Menuobject hooks");
             }
@@ -37,18 +37,15 @@ namespace ColorConfig
                 ColorConfigMod.DebugException("Failed to initialize Menuobject hooks", ex);
             }
         }
-        public static void On_RainWorld_Update(On.RainWorld.orig_Update orig, RainWorld self)
+        public static void On_Menu_Update(On.Menu.Menu.orig_Update orig, Menu.Menu self)
         {
+            self.GetInputExtras().UpdateInputs();
             orig(self);
-            ColorConfigMod.lastPMInput = ColorConfigMod.pMInput;
-            ColorConfigMod.lastFemInput = ColorConfigMod.femInput;
-            ColorConfigMod.pMInput = SmallUtils.FixedPlayerUIInput(-1);
-            ColorConfigMod.femInput = SmallUtils.GetFixedExtraMenuInput();
         }
         public static void On_MenuObject_Update(On.Menu.MenuObject.orig_Update orig, MenuObject self)
         {
             orig(self);
-            self.UpdateExtraInterfaces();
+            self.UpdateExtraInterfaces(self.menu);
         }
 
         //slugcat select menu hooks
@@ -73,7 +70,7 @@ namespace ColorConfig
         public static void On_SlugcatSelectMenu_AddColorButtons(On.Menu.SlugcatSelectMenu.orig_AddColorButtons orig, SlugcatSelectMenu self)
         {
             orig(self);
-            if (ModOptions.EnableSlugcatDisplay.Value && ModOptions.EnableLegacyIdeaSlugcatDisplay.Value && self.GetExtraSSMInterface().slugcatDisplay == null)
+            if (ModOptions.Instance.EnableSlugcatDisplay.Value && ModOptions.Instance.EnableLegacyIdeaSlugcatDisplay.Value && self.GetExtraSSMInterface().slugcatDisplay == null)
             {
                 Vector2 vector = self.manager.BaseScreenColorInterfacePos();
                 vector.y -= (ModManager.JollyCoop ? 40 : 0) + (self.colorInterface != null ? self.colorInterface.bodyColors.Length * 40 : 0);
@@ -131,17 +128,17 @@ namespace ColorConfig
         {
             if (ModOptions.ShouldAddSSMLegacySliders && extraInterfaces.legacySliders == null)
             {
-                extraInterfaces.legacySliders = new(ssM, ssM.pages[0], ssM.defaultColorButton.pos + new Vector2(0, -40), new(0, -40), new(200, 40), [.. sliderOOOIDGroups.Exclude(0)], showValue: ModOptions.ShowVisual, rounding: ModOptions.SliderRounding.Value, dec: ModOptions.DeCount);
+                extraInterfaces.legacySliders = new(ssM, ssM.pages[0], ssM.defaultColorButton.pos + new Vector2(0, -40), new(0, -40), new(200, 40), [.. sliderOOOIDGroups.Exclude(0)], showValue: ModOptions.ShowVisual, rounding: ModOptions.Instance.SliderRounding.Value, dec: ModOptions.DeCount);
                 ssM.pages[0].subObjects.Add(extraInterfaces.legacySliders);
                 ssM.MutualVerticalButtonBind(extraInterfaces.legacySliders.sliderO, ssM.defaultColorButton);
                 ssM.MutualVerticalButtonBind(ssM.nextButton, extraInterfaces.legacySliders.oOOPages.PagesOn ? extraInterfaces.legacySliders.oOOPages.prevButton : extraInterfaces.legacySliders.sliderOOO);
             }
             if (extraInterfaces.sliderPages == null)
             {
-                extraInterfaces.sliderPages = new(ssM, ssM.pages[0], [ssM.hueSlider, ssM.satSlider, ssM.litSlider], extraInterfaces.legacySliders != null ? [.. sliderOOOIDGroups[0].ToSingleList()] : sliderOOOIDGroups, new(0, 25))
+                extraInterfaces.sliderPages = new(ssM, ssM.pages[0], [ssM.hueSlider, ssM.satSlider, ssM.litSlider], extraInterfaces.legacySliders != null ? [sliderOOOIDGroups[0]] : sliderOOOIDGroups, new(0, 25))
                 {
                     showValues = ModOptions.ShowVisual,
-                    roundingType = ModOptions.SliderRounding.Value,
+                    roundingType = ModOptions.Instance.SliderRounding.Value,
                     DecimalCount = ModOptions.DeCount,
                 };
                 ssM.pages[0].subObjects.Add(extraInterfaces.sliderPages);
@@ -158,16 +155,14 @@ namespace ColorConfig
         }
         public static void AddOtherSSMInterface(SlugcatSelectMenu ssM, ExtraSSMInterfaces extraInterfaces, SlugcatStats.Name name)
         {
-            if (ModOptions.EnableSlugcatDisplay.Value && extraInterfaces.slugcatDisplay == null)
+            if (ModOptions.Instance.EnableSlugcatDisplay.Value && extraInterfaces.slugcatDisplay == null)
             {
-                extraInterfaces.slugcatDisplay = new(ssM, ssM.pages[0], new(ssM.satSlider.pos.x + 140, ssM.satSlider.pos.y + 80), new(45f, 45f),
-                    name);
+                extraInterfaces.slugcatDisplay = new(ssM, ssM.pages[0], new(ssM.satSlider.pos.x + 140, ssM.satSlider.pos.y + 80), new(45f, 45f), name);
                 ssM.pages[0].subObjects.Add(extraInterfaces.slugcatDisplay);
-
             }
-            if (ModOptions.EnableHexCodeTypers.Value)
+            if (ModOptions.Instance.EnableHexCodeTypers.Value)
             {
-                if (ModOptions.EnableLegacyHexCodeTypers.Value && extraInterfaces.legacyHexInterface == null)
+                if (ModOptions.Instance.EnableLegacyHexCodeTypers.Value && extraInterfaces.legacyHexInterface == null)
                 {
                     extraInterfaces.legacyHexInterface = new(ssM, ssM.pages[0], ssM.defaultColorButton.pos + new Vector2(ssM.defaultColorButton.size.x + 10, 0), PlayerGraphics.ColoredBodyPartList(name))
                     {
@@ -189,7 +184,7 @@ namespace ColorConfig
                         saveNewTypedColor = (hexTyper, hsl, rgb) => { ssM.SaveHSLString_Story(hsl); ssM.hueSlider.UpdateSliderValue(); ssM.satSlider.UpdateSliderValue(); ssM.litSlider.UpdateSliderValue(); }
                     };
                     ssM.pages[0].subObjects.Add(extraInterfaces.hexInterface);
-                    extraInterfaces.hexInterface.elementWrapper.MenuObjectBind(extraInterfaces.sliderPages.PagesOn ? extraInterfaces.sliderPages.nextButton : ssM.litSlider, top: true);
+                    extraInterfaces.hexInterface.elementWrapper.MenuObjectBind(extraInterfaces.sliderPages?.PagesOn == true? extraInterfaces.sliderPages.nextButton : ssM.litSlider, top: true);
                     extraInterfaces.hexInterface.elementWrapper.MenuObjectBind(extraInterfaces.legacySliders != null ? extraInterfaces.legacySliders.sliderO : ssM.nextButton, bottom: true);
                 }
             }
@@ -198,7 +193,7 @@ namespace ColorConfig
         {
             ssM.pages[0].ClearMenuObject(ref extraInterfaces.legacySliders);
             ssM.pages[0].ClearMenuObject(ref extraInterfaces.sliderPages);
-            if (!ModOptions.EnableLegacyIdeaSlugcatDisplay.Value)
+            if (!ModOptions.Instance.EnableLegacyIdeaSlugcatDisplay.Value)
             {
                 ssM.pages[0].ClearMenuObject(ref extraInterfaces.slugcatDisplay);
             }
@@ -225,10 +220,6 @@ namespace ColorConfig
                 On.JollyCoop.JollyMenu.ColorChangeDialog.ColorSlider.ctor += On_ColorChangeDialog_ColorSlider_ctor;
                 On.JollyCoop.JollyMenu.ColorChangeDialog.ColorSlider.RemoveSprites += On_ColorChangeDialog_ColorSlider_RemoveSprites;
                 ColorConfigMod.DebugLog("Sucessfully extended color interface for jolly coop menu!");
-                if (ColorConfigMod.IsLukkyRGBColorSliderModOn)
-                {
-                    LukkyRGBModHooks.ApplyLukkyModHooks();
-                }
             }
             catch (Exception ex)
             {
@@ -238,7 +229,7 @@ namespace ColorConfig
         public static void On_ColorChangeDialog_ColorSlider_ctor(On.JollyCoop.JollyMenu.ColorChangeDialog.ColorSlider.orig_ctor orig, ColorChangeDialog.ColorSlider self, Menu.Menu menu, MenuObject owner, Vector2 pos, int playerNumber, int bodyPart, string sliderTitle)
         {
             orig(self, menu, owner, pos, playerNumber, bodyPart, sliderTitle);
-            self.GetExtraJollyInterface(/*bodyPart,*/ ModOptions.ShouldRemoveHSLSliders || ModOptions.FollowLukkyRGBSliders, ModOptions.EnableHexCodeTypers.Value);
+            self.GetExtraJollyInterface(/*bodyPart,*/ ModOptions.ShouldRemoveHSLSliders || ModOptions.FollowLukkyRGBSliders, ModOptions.Instance.EnableHexCodeTypers.Value);
         }
         public static void On_ColorChangeDialog_ColorSlider_RemoveSprites(On.JollyCoop.JollyMenu.ColorChangeDialog.ColorSlider.orig_RemoveSprites orig, ColorChangeDialog.ColorSlider self)
         {
@@ -265,14 +256,14 @@ namespace ColorConfig
                 if (MenuToolObj.RGBSliderIDS.Contains(slider.ID))
                 {
                     Color color = colSlider.color;
-                    color[MenuToolObj.RGBSliderIDS.FindIndex(slider.ID)] = f;
+                    color[MenuToolObj.RGBSliderIDS.IndexOf(slider.ID)] = f;
                     colSlider.color = SmallUtils.RWIIIClamp(color.RGB2Vector3(), CustomColorModel.RGB, out Vector3 newHSL).Vector32RGB();
                     colSlider.hslColor = SmallUtils.FixNonHueSliderWonkiness(newHSL, colSlider.hslColor.HSL2Vector3()).Vector32HSL();
                 }
                 if (MenuToolObj.HSVSliderIDS.Contains(slider.ID))
                 {
                     Vector3 hsv = ColConversions.HSL2HSV(colSlider.hslColor.HSL2Vector3());
-                    hsv[MenuToolObj.HSVSliderIDS.FindIndex(slider.ID)] = f;
+                    hsv[MenuToolObj.HSVSliderIDS.IndexOf(slider.ID)] = f;
                     SmallUtils.RWIIIClamp(hsv, CustomColorModel.HSV, out Vector3 newHSL);
                     colSlider.hslColor = newHSL.Vector32HSL();
                     colSlider.HSL2RGB();
@@ -307,13 +298,9 @@ namespace ColorConfig
             if (slider?.ID != null && slider.owner is ColorChangeDialog.ColorSlider colSlider)
             {
                 if (MenuToolObj.RGBSliderIDS.Contains(slider.ID))
-                {
-                    f = colSlider.color[MenuToolObj.RGBSliderIDS.FindIndex(slider.ID)];
-                }
+                    f = colSlider.color[MenuToolObj.RGBSliderIDS.IndexOf(slider.ID)];
                 if (MenuToolObj.HSVSliderIDS.Contains(slider.ID))
-                {
-                    f = ColConversions.HSL2HSV(colSlider.hslColor.HSL2Vector3())[MenuToolObj.HSVSliderIDS.FindIndex(slider.ID)];
-                }
+                    f = ColConversions.HSL2HSV(colSlider.hslColor.HSL2Vector3())[MenuToolObj.HSVSliderIDS.IndexOf(slider.ID)];
             }
             /*if (slider?.ID?.value != null && slider.ID.value.StartsWith("DUSTY") && slider.ID.value.Contains('_') && slider.owner is ColorChangeDialog.ColorSlider colSlider)
             {
@@ -335,26 +322,6 @@ namespace ColorConfig
 
             }*/
             return f >= 0;
-        }
-        public static class LukkyRGBModHooks
-        {
-            public static void ApplyLukkyModHooks()
-            {
-                ColorConfigMod.DebugLog("Initialising Lukky RGB Slider Hooks");
-                typeof(LukkyMod.Main).GetMethod("ColorSlider_RGB2HSL", BindingFlags.Instance | BindingFlags.NonPublic).HookMethod(delegate (Action<LukkyMod.Main, On.JollyCoop.JollyMenu.ColorChangeDialog.ColorSlider.orig_RGB2HSL,
-                    ColorChangeDialog.ColorSlider> orig, LukkyMod.Main main, On.JollyCoop.JollyMenu.ColorChangeDialog.ColorSlider.orig_RGB2HSL origCode,
-                    ColorChangeDialog.ColorSlider colSlider)
-                {
-                    origCode(colSlider);
-                });
-                typeof(LukkyMod.Main).GetMethod("ColorSlider_HSL2RGB", BindingFlags.Instance | BindingFlags.NonPublic).HookMethod(delegate (Action<LukkyMod.Main, On.JollyCoop.JollyMenu.ColorChangeDialog.ColorSlider.orig_HSL2RGB,
-                   ColorChangeDialog.ColorSlider> orig, LukkyMod.Main main, On.JollyCoop.JollyMenu.ColorChangeDialog.ColorSlider.orig_HSL2RGB origCode,
-                   ColorChangeDialog.ColorSlider colSlider)
-                {
-                    origCode(colSlider);
-                });
-                ColorConfigMod.DebugLog("Sucessfully Initialised Lukky RGB Slider Hooks");
-            }
         }
 
         //opcolorconfig
@@ -385,10 +352,8 @@ namespace ColorConfig
             typeof(OpColorPicker).GetProperty(nameof(OpColorPicker.@value)).GetSetMethod().ILHookMethod(IL_OPColorPicker_set_value);
             typeof(OpColorPicker).GetProperty(nameof(OpColorPicker.@value)).GetSetMethod().HookMethod(delegate (Action<OpColorPicker, string> orig, OpColorPicker self, string newValue)
             {
-                if ((ModOptions.EnableBetterOPColorPicker.Value || ModOptions.EnableDiffOpColorPickerHSL.Value) && self._mode == OpColorPicker.PickerMode.HSL)
-                {
+                if ((ModOptions.Instance.EnableBetterOPColorPicker.Value || ModOptions.Instance.EnableDiffOpColorPickerHSL.Value) && self._mode == OpColorPicker.PickerMode.HSL)
                     self.RefreshTexture();
-                }
                 orig(self, newValue);
             });
         }
@@ -404,7 +369,7 @@ namespace ColorConfig
                 cursor.EmitDelegate(delegate (RXColorHSL rXHSL, OpColorPicker self, string newVal)
                 {
                     rXHSL = ModOptions.PickerHSVMode ? ColConversions.HSL2HSV(rXHSL.RXHSl2Vector3()).Vector32RXHSL() : rXHSL;
-                    if (ModOptions.EnableBetterOPColorPicker.Value)
+                    if (ModOptions.Instance.EnableBetterOPColorPicker.Value)
                     {
                         if (self._mode == OpColorPicker.PickerMode.HSL && (self._curFocus == OpColorPicker.MiniFocus.HSL_Hue || self._curFocus == OpColorPicker.MiniFocus.HSL_Saturation || self._curFocus == OpColorPicker.MiniFocus.HSL_Lightness))
                         {
@@ -449,7 +414,7 @@ namespace ColorConfig
                 cursor.Emit(OpCodes.Ldarg_0);
                 cursor.EmitDelegate(delegate (Color hslCol, OpColorPicker self)
                 {
-                    return self.IsHSVMode() ? ColConversions.HSV2RGB(self.GetHSL01()) : ModOptions.EnableBetterOPColorPicker.Value && self._h == 100 ? ColConversions.HSL2RGB(self.GetHSL01()) : hslCol;
+                    return self.IsHSVMode() ? ColConversions.HSV2RGB(self.GetHSL01()) : ModOptions.Instance.EnableBetterOPColorPicker.Value && self._h == 100 ? ColConversions.HSL2RGB(self.GetHSL01()) : hslCol;
                 });
                 ColorConfigMod.DebugLog("Sucessfully patched RGB Color to take hsv or not turn grey!");
             }
@@ -522,7 +487,7 @@ namespace ColorConfig
                 cursor.Emit(OpCodes.Ldloc_1);
                 cursor.EmitDelegate(delegate (OpColorPicker self, OpColorPicker.PickerMode newMode)
                 {
-                    if (ModOptions.EnableRotatingOPColorPicker.Value && self._mode == OpColorPicker.PickerMode.HSL && newMode == self._mode && (ModOptions.PickerHSVMode || ModOptions.EnableDiffOpColorPickerHSL.Value))
+                    if (ModOptions.Instance.EnableRotatingOPColorPicker.Value && self._mode == OpColorPicker.PickerMode.HSL && newMode == self._mode && (ModOptions.PickerHSVMode || ModOptions.Instance.EnableDiffOpColorPickerHSL.Value))
                     {
                         self.SwitchHSLCustomMode();
                         ColorConfigMod.DebugLog("Sucessfully patched for switch mode using non-mouse");
@@ -550,7 +515,7 @@ namespace ColorConfig
                 cursor.EmitDelegate(delegate (OpColorPicker self)
                 {
                     //hueSatToSatHueTextFix
-                    if (ModOptions.EnableDiffOpColorPickerHSL.Value)
+                    if (ModOptions.Instance.EnableDiffOpColorPickerHSL.Value)
                     {
                         self._lblB.color = self._lblR.color;
                         self._lblR.color = self.colorText;
@@ -561,7 +526,7 @@ namespace ColorConfig
                 cursor.Emit(OpCodes.Ldarg_0);
                 cursor.EmitDelegate(delegate (Vector2 origFocus, OpColorPicker self)
                 {
-                    return ModOptions.EnableDiffOpColorPickerHSL.Value && self.MenuMouseMode ? new(104, 25) : origFocus;
+                    return ModOptions.Instance.EnableDiffOpColorPickerHSL.Value && self.MenuMouseMode ? new(104, 25) : origFocus;
                 });
                 ColorConfigMod.DebugLog("Successfully patched focus glow for hue2lit text");
                 cursor.GotoNext(x => x.MatchLdarg(0), x => x.MatchLdfld<OpColorPicker>(nameof(OpColorPicker._lblB)));
@@ -569,7 +534,7 @@ namespace ColorConfig
                 cursor.Emit(OpCodes.Ldarg_0);
                 cursor.EmitDelegate(delegate (OpColorPicker self)
                 {
-                    if (ModOptions.EnableDiffOpColorPickerHSL.Value && self.MenuMouseMode)
+                    if (ModOptions.Instance.EnableDiffOpColorPickerHSL.Value && self.MenuMouseMode)
                     {
                         self._lblR.color = self._lblB.color;
                         self._lblB.color = self.colorText;
@@ -581,7 +546,7 @@ namespace ColorConfig
                 cursor.Emit(OpCodes.Ldarg_0);
                 cursor.EmitDelegate(delegate (Vector2 origFocus, OpColorPicker self)
                 {
-                    return ModOptions.EnableDiffOpColorPickerHSL.Value && self.MenuMouseMode ? new(104f, 105f) : origFocus;
+                    return ModOptions.Instance.EnableDiffOpColorPickerHSL.Value && self.MenuMouseMode ? new(104f, 105f) : origFocus;
                 });
                 ColorConfigMod.DebugLog("Successfully patched focus glow for lit2hue text");
             }
@@ -593,13 +558,13 @@ namespace ColorConfig
         public static void On_OPColorPicker_Ctor(On.Menu.Remix.MixedUI.OpColorPicker.orig_ctor orig, OpColorPicker self, Configurable<Color> config, Vector2 pos)
         {
             self.GetColorPickerExtras()._IsHSVMode = ModOptions.PickerHSVMode;
-            self.GetColorPickerExtras()._IsDifferentHSLHSVMode = ModOptions.EnableDiffOpColorPickerHSL.Value;
+            self.GetColorPickerExtras()._IsDifferentHSLHSVMode = ModOptions.Instance.EnableDiffOpColorPickerHSL.Value;
             orig(self, config, pos);
             self._lblHSL.text = self.IsHSVMode() ? "HSV" : self._lblHSL.text;
         }
         public static void On_OPColorPicker__MouseTrySwitchMode(On.Menu.Remix.MixedUI.OpColorPicker.orig__MouseTrySwitchMode orig, OpColorPicker self, OpColorPicker.PickerMode newMode)
         {
-            if (ModOptions.EnableRotatingOPColorPicker.Value && self._mode == OpColorPicker.PickerMode.HSL && newMode == self._mode && (ModOptions.PickerHSVMode || ModOptions.EnableDiffOpColorPickerHSL.Value))
+            if (ModOptions.Instance.EnableRotatingOPColorPicker.Value && self._mode == OpColorPicker.PickerMode.HSL && newMode == self._mode && (ModOptions.PickerHSVMode || ModOptions.Instance.EnableDiffOpColorPickerHSL.Value))
             {
                 self.SwitchHSLCustomMode();
                 return;
@@ -639,7 +604,11 @@ namespace ColorConfig
                     }
                 }
                 //Arrows
-                self.ApplyHSLArrows();
+                Color hueArrowCol = new(1 - self._r / 100f, 1f - self._g / 100f, 1f - self._b / 100f);
+                hueArrowCol = Color.Lerp(Color.white, hueArrowCol, Mathf.Pow(Mathf.Abs(hueArrowCol.grayscale - 0.5f) * 2f, 0.3f));
+                SmallUtils.ApplyHSLArrow(self._ttre1, diff ? hsvHSL.y : hsvHSL.x, hueArrowCol, false, diff ? hsvHSL.z : hsvHSL.y); //first leftright arrow, diff -> s, h
+                SmallUtils.ApplyHSLArrow(self._ttre1, diff ? hsvHSL.z : hsvHSL.y, hueArrowCol, true, diff ? hsvHSL.y : hsvHSL.x); //second downright arrow square texture, diff -> l, s
+                SmallUtils.ApplyHSLArrow(self._ttre2, diff ? hsvHSL.x : hsvHSL.z, hueArrowCol, true, 51); //last rect texture, diff -> h, l
                 self._ttre1.Apply();
                 self._ttre2.Apply();
                 return;
@@ -649,15 +618,15 @@ namespace ColorConfig
         public static void On_OPColorPicker_Update(On.Menu.Remix.MixedUI.OpColorPicker.orig_Update orig, OpColorPicker self)
         {
             orig(self);
-            if (self.IsMouseMode())
+            if (self.CurrentlyFocusableMouse && self.MenuMouseMode)
             {
                 if (self._MouseOverHex())
                 {
-                    ((Action)(SmallUtils.CopyShortcutPressed() ? self.CopyHexCPicker : SmallUtils.PasteShortcutPressed() ? self.PasteHexCPicker : null))?.Invoke();
+                    ((Action?)(SmallUtils.CopyShortcutPressed(self.Menu) ? self.CopyHexCPicker : SmallUtils.PasteShortcutPressed(self.Menu) ? self.PasteHexCPicker : null))?.Invoke();
                 }
-                if (ModOptions.CopyPasteForColorPickerNumbers.Value && self.IfCPickerNumberHovered(out int oOO))
+                if (ModOptions.Instance.CopyPasteForColorPickerNumbers.Value && self.IfCPickerNumberHovered(out int oOO))
                 {
-                    ((Action<int>)(SmallUtils.CopyShortcutPressed() ? self.CopyNumberCPicker : SmallUtils.PasteShortcutPressed() ? self.PasteNumberCPicker : null))?.Invoke(oOO);
+                    ((Action<int>?)(SmallUtils.CopyShortcutPressed(self.Menu) ? self.CopyNumberCPicker : SmallUtils.PasteShortcutPressed(self.Menu) ? self.PasteNumberCPicker : null))?.Invoke(oOO);
                 }
             }
         }
@@ -666,7 +635,7 @@ namespace ColorConfig
             orig(self, timeStacker);
             if (!self.greyedOut)
             {
-                if (ModOptions.CopyPasteForColorPickerNumbers.Value)
+                if (ModOptions.Instance.CopyPasteForColorPickerNumbers.Value)
                 {
                     self._lblR.color = self.CurrentlyFocusableMouse && self._lblR.IsFLabelHovered(self.MousePos) ? Color.Lerp(MenuColorEffect.rgbWhite, self.colorText, self.bumpBehav.Sin(10f)) :
                         self._lblR.color;
@@ -720,8 +689,8 @@ namespace ColorConfig
         public static void On_CharacterSelectPage_Ctor(On.Menu.CharacterSelectPage.orig_ctor orig, CharacterSelectPage self, Menu.Menu menu, MenuObject owner, Vector2 pos)
         {
             orig(self, menu, owner, pos);
-            SymbolButton colorConfig = self.GetExtraEXPInterface().colorConfig;
-            if (!ModManager.JollyCoop && ModManager.MMF && colorConfig == null && ModOptions.EnableExpeditionColorConfig.Value)
+            SymbolButton? colorConfig = self.GetExtraEXPInterface().colorConfig;
+            if (!ModManager.JollyCoop && ModManager.MMF && colorConfig == null && ModOptions.Instance.EnableExpeditionColorConfig.Value)
             {
                 colorConfig = new(menu, self, "colorconfig_slugcat_noncoloured", "DUSTY_EXPEDITION_CONFIG", new(440 + (self.jollyToggleConfigMenu?.pos == new Vector2(440, 550) ? -self.jollyToggleConfigMenu.size.x - 10 : 0), 550));
                 colorConfig.roundedRect.size = new(50, 50);
@@ -734,11 +703,11 @@ namespace ColorConfig
         public static void On_CharacterSelectPage_SetUpSelectables(On.Menu.CharacterSelectPage.orig_SetUpSelectables orig, CharacterSelectPage self)
         {
             orig(self);
-            SymbolButton colorConfig = self.GetExtraEXPInterface().colorConfig;
+            SymbolButton? colorConfig = self.GetExtraEXPInterface().colorConfig;
             if (colorConfig != null)
             {
-                colorConfig.MenuObjectBind((self.menu as ExpeditionMenu).muteButton, left: true, top: true);
-                colorConfig.MenuObjectBind(self.jollyToggleConfigMenu != null ? self.jollyToggleConfigMenu : self.slugcatButtons.GetValueOrDefault(0), true);
+                colorConfig.MenuObjectBind((self.menu as ExpeditionMenu)?.muteButton, left: true, top: true);
+                colorConfig.MenuObjectBind(self.jollyToggleConfigMenu != null ? self.jollyToggleConfigMenu : self.slugcatButtons.ValueOrDefault(0), true);
                 colorConfig.MenuObjectBind(self.slugcatButtons.Length > 3 ? self.slugcatButtons[3] : self.confirmExpedition, bottom: true);
             }
         }
@@ -751,7 +720,7 @@ namespace ColorConfig
                 self.menu.manager.ShowDialog(new ExpeditionColorDialog(self.menu, SmallUtils.ExpeditionSlugcat(), () =>
                 {
                     self.GetExtraEXPInterface().colorConfig?.symbolSprite?.SetElementByName(GetColorEnabledSprite(self.menu));
-                }, ModOptions.EnableHexCodeTypers.Value, showSlugcatDisplay: ModOptions.EnableSlugcatDisplay.Value));
+                }, ModOptions.Instance.EnableHexCodeTypers.Value, showSlugcatDisplay: ModOptions.Instance.EnableSlugcatDisplay.Value));
 
             }
 
@@ -777,15 +746,5 @@ namespace ColorConfig
             orig(self);
         }
         public static string GetColorEnabledSprite(Menu.Menu menu) => menu.IsCustomColorEnabled(Expedition.ExpeditionData.slugcatPlayer) ? "colorconfig_slugcat_coloured" : "colorconfig_slugcat_noncoloured";
-        public static class BingoModUtils
-        {
-            public static void TryApplyBingoColors(Menu.Menu menu, string message)
-            {
-                if (message == "STARTBINGO" || message == "LOADBINGO")
-                {
-                    menu.TrySaveExpeditionColorsToCustomColors(SmallUtils.ExpeditionSlugcat());
-                }
-            }
-        }
     }
 }

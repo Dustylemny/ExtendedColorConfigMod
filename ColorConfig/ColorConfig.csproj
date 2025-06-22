@@ -3,11 +3,18 @@
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
     <LangVersion>latest</LangVersion>
+   <Nullable>enable</Nullable>
+   <AssemblyVersion>1.3.8</AssemblyVersion>
   </PropertyGroup>
-
   <ItemGroup>
+    <Reference Include="0Harmony">
+      <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Rain World\BepInEx\core\0Harmony.dll</HintPath>
+    </Reference>
     <Reference Include="BepInEx">
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Rain World\BepInEx\core\BepInEx.dll</HintPath>
+    </Reference>
+    <Reference Include="BingoMode">
+      <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\workshop\content\312520\3441764924\v1.9.15b\plugins\BingoMode.dll</HintPath>
     </Reference>
     <Reference Include="HOOKS-Assembly-CSharp">
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Rain World\BepInEx\plugins\HOOKS-Assembly-CSharp.dll</HintPath>
