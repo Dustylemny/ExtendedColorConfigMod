@@ -15,8 +15,9 @@ using BepInEx.Logging;
 using System.Diagnostics;
 using System.Reflection;
 using UnityEngine;
-using ColorConfig.MenuUI;
 using ColorConfig.WeakUITable;
+using ColorConfig.Hooks;
+using ColorConfig.MenuUI.Objects;
 #pragma warning disable CS0618
 
 [module: UnverifiableCode]
@@ -28,6 +29,17 @@ namespace ColorConfig
     public sealed class ColorConfigMod : BaseUnityPlugin
     {
         public const string id = "dusty.colorconfig", modName = "Extended Color Config", version = "1.3.8";
+        public static readonly ConditionalWeakTable<object, InputExtras> inputExtras = new();
+        public static readonly ConditionalWeakTable<object, ExtraSSMInterfaces> extraSSMInterfaces = new();
+        public static readonly ConditionalWeakTable<object, ExtraExpeditionInterfaces> extraEXPInterfaces = new();
+        public static readonly ConditionalWeakTable<JollyCoop.JollyMenu.ColorChangeDialog.ColorSlider, JollyCoopOOOConfig> extraJollyInterfaces = new();
+        public static readonly ConditionalWeakTable<OpColorPicker, ColorPickerExtras> extraColorPickerStuff = new();
+        public static bool IsLukkyRGBColorSliderModOn { get; private set; }
+        public static bool IsRainMeadowOn { get; private set; }
+        public static bool IsBingoOn { get; private set; }
+        public static new ManualLogSource Logger { get; private set; }
+        private bool IsApplied { get; set; } = false;
+        private static readonly bool shouldEnableCursorDebug = false;
         public void OnEnable()
         {
             Logger = base.Logger;
@@ -68,10 +80,10 @@ namespace ColorConfig
             MethodBase method = frame.GetMethod();
             return $"{(getAssembly ? method.DeclaringType.FullName : method.DeclaringType.Name)}.{method.Name}";
         }
-        public static void DebugLog(string message) => Logger.LogInfo($"{GetMethodName()}: {message}");
-        public static void DebugWarning(string message) => Logger.LogWarning($"{GetMethodName()}: {message}");
-        public static void DebugError(string message) => Logger.LogError($"{GetMethodName()}: {message}");
-        public static void DebugException(string message, Exception ex)
+        public static void DebugLog(object message) => Logger.LogInfo($"{GetMethodName()}: {message}");
+        public static void DebugWarning(object message) => Logger.LogWarning($"{GetMethodName()}: {message}");
+        public static void DebugError(object message) => Logger.LogError($"{GetMethodName()}: {message}");
+        public static void DebugException(object message, Exception ex)
         {
             Logger.LogError($"{GetMethodName()}: {message}");
             Logger.LogError(ex);
@@ -81,17 +93,6 @@ namespace ColorConfig
             Logger.LogInfo($"{GetMethodName()}: {message}{(shouldEnableCursorDebug ?
                 $"{cursor}" : $"Index: {cursor.Index}")}");
         }
-        private bool IsApplied { get; set; } = false;
-        private static readonly bool shouldEnableCursorDebug = false;
-        public static bool IsLukkyRGBColorSliderModOn { get; private set; }
-        public static bool IsRainMeadowOn { get; private set; }
-        public static bool IsBingoOn { get; private set; }
-        public static new ManualLogSource Logger { get; private set; }
-        public static readonly ConditionalWeakTable<object, InputExtras> inputExtras = new();
-        public static readonly ConditionalWeakTable<object, ExtraSSMInterfaces> extraSSMInterfaces = new();
-        public static readonly ConditionalWeakTable<object, ExtraExpeditionInterfaces> extraEXPInterfaces = new();
-        public static readonly ConditionalWeakTable<JollyCoop.JollyMenu.ColorChangeDialog.ColorSlider, JollyCoopOOOConfig> extraJollyInterfaces = new();
-        public static readonly ConditionalWeakTable<OpColorPicker, ColorPickerExtras> extraColorPickerStuff = new();
     }
 
 
