@@ -61,6 +61,12 @@
     <Reference Include="UnityEngine.InputLegacyModule">
       <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Rain World\RainWorld_Data\Managed\UnityEngine.InputLegacyModule.dll</HintPath>
     </Reference>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Rain World\RainWorld_Data\Managed\UnityEngine.UI.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UIModule">
+      <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Rain World\RainWorld_Data\Managed\UnityEngine.UIModule.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>
