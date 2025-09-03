@@ -6,3 +6,5 @@
 /ColorConfig/.vs/ColorConfig
 /ColorConfig/obj/Debug/net48
 /ColorConfig/obj
+/ColorConfig/ColorConfigHooksOBSOLETE.cs
+/ColorConfig/ColorConfig.csproj
