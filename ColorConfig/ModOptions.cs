@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Menu.Remix.MixedUI;
+using RWCustom;
 using UnityEngine;
 
 namespace ColorConfig
@@ -12,7 +13,9 @@ namespace ColorConfig
     { 
 
         public const float sBoxLXOffset = 35;
+        public Queue<OpRect> opRects = [];
         public List<UIelement> pendingUiElements = [];
+        public float lastHeaderY;
         public Vector2 control = new(25, 540);
         public readonly Configurable<int> DecimalCount;
         public readonly Configurable<MidpointRounding> SliderRounding;
@@ -50,7 +53,7 @@ namespace ColorConfig
             RemoveHSLSliders = Bind("RemoveHSLSliders", false, "Removes HSL Sliders in story and jolly-coop menu, will remove if other sliders are turned on.", "Remove HSL Sliders?");
             EnableRGBSliders = Bind("EnableRGBSliders", true, "Enables RGB Sliders in story and jolly-coop menu.", "Enable RGB Sliders?");
             EnableHSVSliders = Bind("EnableHSVSliders", false, "Enables HSV Sliders in story and jolly-coop menu.", "Enable HSV Sliders?");
-            CopyPasteForSliders = Bind("CopyPasteForSliders", false, "Adds copy paste support to color sliders, is experimental and changes slider value based on color space\nRGB follows 255, Hue in HSL follows 360.", "Copy Paste support for color sliders?");
+            CopyPasteForSliders = Bind("CopyPasteForSliders", false, "Adds copy paste support to color sliders, is experimental and changes slider value based on color space<LINE>RGB follows 255, Hue in HSL follows 360.", "Copy Paste support for color sliders?");
             DisableHueSliderMaxClamp = Bind("DisableHueSliderMaxValue", false, "An experiemental feature that increases the hue slider max value you can set to 100% instead of 99% in story menu and expedition menu (if Enable Config for Expedition? is on)\nCAUTION as if you disable the mod after you have saved hue to 100%, it may make your saved color grey , due to rw's hue conversion. (This mod tries to convert back whenever the color config closes)", "Disable Hue Slider max slider value?");
 
             EnableHexCodeTypers = Bind("EnableHexCodeTypers", true, "Enables HexCode Typers in story and jolly-coop menu.", "Enable HexCode Typers?");
@@ -60,7 +63,7 @@ namespace ColorConfig
             EnableBetterOPColorPicker = Bind("EnableBetterOPColorPicker", true, "Makes OP-ColorPicker selectors a bit less annoying.", "Enable less annoying OP-ColorPickers?");
             EnableDiffOpColorPickerHSL = Bind("EnableDifferentOPColorPicker", true, "Changes HueSat Square Picker in HSL/HSV Mode to SatLit Square picker and vice versa.", "Enable Different OP-ColorPickers?");
             HSL2HSVOPColorPicker = Bind("HSL2HSVOPColorPicker", true, "Replaces OP-ColorPickers' HSL mode to HSV mode.", "Enable HSV OP-ColorPickers?");
-            EnableRotatingOPColorPicker = Bind("EnableRotatingOPColorPicker", true, "Allows OP-ColorPickers to rotate between custom modes. Press on the HSL/HSV Button in HSL/HSV mode to change modes if respective options are on. 'Less annoying OP-ColorPickers' will make toggled HSL mode ignore 'Different OP-ColorPickers'", "Switch custom modes for OP-ColorPickers?");
+            EnableRotatingOPColorPicker = Bind("EnableRotatingOPColorPicker", true, "Allows OP-ColorPickers to rotate between custom modes. Press on the HSL/HSV Button in HSL/HSV mode to change modes if respective options are on. <LINE>'Less annoying OP-ColorPickers' will make toggled HSL mode ignore 'Different OP-ColorPickers'", "Switch modes for OP-ColorPickers?");
             CopyPasteForColorPickerNumbers = Bind("CopyPatseOPColorPickerNumbers", false, "Allows copy paste for Color Picker numbers.", "Copy Paste OP-ColorPicker Numbers?");
 
             EnableLegacyIdeaSlugcatDisplay = Bind("EnableLegacySlugcatDisplay", true, "Makes slugcat display in story menu to appear when the custom color checkbox is checked\ninstead of when configuring colors.", "Enable Original Idea Slugcat Display?");
@@ -79,47 +82,59 @@ namespace ColorConfig
             ResetControl();
             //Visuals
             AddHeader("Visuals", false);
+            PreAddRect(260);
             AddCheckBoxLabel(EnableVisualisers);
             AddIntDragger(DecimalCount);
             AddEnumList(SliderRounding);
             AddCheckBoxLabel(IntToFloatColorValues);
             AddCheckBoxLabel(EnableSlugcatDisplay);
+            AddPendingRect();
 
             //sliders
             AddHeader("Sliders");
+            PreAddRect(260);
             AddCheckBoxLabel(RemoveHSLSliders);
             AddCheckBoxLabel(EnableRGBSliders);
             AddCheckBoxLabel(EnableHSVSliders);
             AddCheckBoxLabel(CopyPasteForSliders);
+            AddPendingRect(-10, false);
             //AddCheckBoxLabel(DisableHueSliderMaxClamp);
 
             //RIGHT SIDE
             ResetControl(325);
             //Utility
             AddHeader("Utility", false);
+            PreAddRect(265);
             AddCheckBoxLabel(EnableHexCodeTypers);
             AddCheckBoxLabel(EnableExpeditionColorConfig);
+            AddPendingRect();
 
             //OPColorPicker
             AddHeader("Color Pickers");
+            PreAddRect(265);
             AddCheckBoxLabel(EnableBetterOPColorPicker);
             AddCheckBoxLabel(EnableDiffOpColorPickerHSL);
             AddCheckBoxLabel(HSL2HSVOPColorPicker);
             AddCheckBoxLabel(EnableRotatingOPColorPicker);
             AddCheckBoxLabel(CopyPasteForColorPickerNumbers);
+            AddPendingRect();
 
             //Legacy
             AddHeader("Legacy");
+            PreAddRect(265);
             AddCheckBoxLabel(EnableLegacyIdeaSlugcatDisplay);
             AddCheckBoxLabel(EnableLegacySSMSliders);
             AddCheckBoxLabel(EnableLegacyHexCodeTypers);
+            AddPendingRect(nextHeaderSpacing: false);
             DrawAllPendingUI(ref Tabs[0]);
 
             //NEWTAB LEFT
             ResetControl();
             AddHeader("Mod Support", false);
+            PreAddRect(320);
             AddCheckBoxLabel(EnableRainMeadowArenaConfigExtension);
             AddCheckBoxLabel(LukkyRGBJollySliderMeansBusiness);
+            AddPendingRect(nextHeaderSpacing: false);
             DrawAllPendingUI(ref Tabs[1]);
 
         }
@@ -139,12 +154,13 @@ namespace ColorConfig
             OpLabel opLabel = new(control, new(100f, 30f), Translate(text), alightment, true);
             AddPendingUI(opLabel);
             control.y -= 40;
+            lastHeaderY = control.y;
         }
         public void AddCheckBoxLabel(Configurable<bool> config)
         {
             OpCheckBox checkBox = new(config, control)
             {
-                description = Translate(config.info.description),
+                description = Custom.ReplaceLineDelimeters(Translate(config.info.description)),
             };
             OpLabel label = new(new(control.x + sBoxLXOffset, control.y), new(60, 25), Translate((string)config.info.Tags[0]), FLabelAlignment.Left);
             AddPendingUI(checkBox, label);
@@ -154,7 +170,7 @@ namespace ColorConfig
         {
             OpDragger dragger = new(config, control)
             {
-                description = Translate(config.info.description)
+                description = Custom.ReplaceLineDelimeters(Translate(config.info.description)),
             };
             OpLabel label = new(new(control.x + sBoxLXOffset, control.y), new(60, 25), Translate((string)config.info.Tags[0]), FLabelAlignment.Left);
             AddPendingUI(dragger, label);
@@ -168,7 +184,7 @@ namespace ColorConfig
             }
             OpResourceList list = new(config, control, width)
             {
-                description = Translate(config.info.description),
+                description = Custom.ReplaceLineDelimeters(Translate(config.info.description)),
             };
             float y = list._downward ? 20 * Mathf.Clamp(list._itemList.Length, 1, list._listHeight) + 10 : 0;
             list.PosY -= y;
@@ -184,18 +200,35 @@ namespace ColorConfig
             }
             OpResourceSelector resource = new(config, control, width)
             {
-                description = Translate(config.info.description),
+                description = Custom.ReplaceLineDelimeters(Translate(config.info.description)),
             };
             OpLabel label = new(new(control.x + width + 10, control.y), new(60, 25), Translate((string)config.info.Tags[0]), FLabelAlignment.Left);
             AddPendingUI(resource, label);
             control.y -= followListSize ? (20 * Mathf.Clamp(resource._itemList.Length, 1, resource._listHeight) + 50) : 40;
+        }
+        public void PreAddRect(float sizeX, float posXOffset = 0, float posYOffset = 0, float alpha = 0.3f)
+        {
+            OpRect opRect = new(new(control.x - 10 + posXOffset, control.y + 35 + posYOffset), new(sizeX, 0), alpha);
+            pendingUiElements.Add(opRect);
+            opRects.Enqueue(opRect);
+        }
+        public void AddPendingRect(float bottomPosYOffset = 0,bool nextHeaderSpacing = true)
+        {
+            OpRect opRect = opRects.Dequeue();
+            float newPosY = control.y + 30;
+            newPosY += bottomPosYOffset;
+            if (nextHeaderSpacing)
+                newPosY -= 10;
+            float newSizeY = opRect.PosY - newPosY;
+            opRect.PosY = newPosY;
+            opRect.size = new(opRect.size.x, newSizeY);
         }
         public void AddColorPicker(Configurable<Color> config)
         {
             control.y -= 125;
             OpColorPicker colorPicker = new(config, control)
             {
-                description = Translate(config.info.description),
+                description = Custom.ReplaceLineDelimeters(Translate(config.info.description)),
             };
             AddPendingUI(colorPicker);
             control.y -= 40;

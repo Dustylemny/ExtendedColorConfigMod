@@ -10,7 +10,8 @@ namespace ColorConfig
     public static class MenuToolObj
     {
 
-        public static Slider.SliderID RedRGB = new("RedRGB", true), GreenRGB = new("GreenRGB", true), BlueRGB = new("BlueRGB", true), HueHSV = new("HueHSV", true), SatHSV = new("SatHSV", true), ValHSV = new("ValHSV", true);
+        public static Slider.SliderID RedRGB = new("RedRGB"), GreenRGB = new("GreenRGB"), BlueRGB = new("BlueRGB"), 
+            HueHSV = new("HueHSV"), SatHSV = new("SatHSV"), ValHSV = new("ValHSV");
         public static readonly Vector3 hslClampMax = new(0.99f, 1, 1), hslClampMin = new(0, 0, 0.01f);
         public const string red = "RED", green = "GREEN", blue = "BLUE", value = "VALUE", hue = "HUE", sat = "SAT", lit = "LIT";
 

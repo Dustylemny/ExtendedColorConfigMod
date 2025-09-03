@@ -15,18 +15,11 @@ using ColorConfig.MenuUI;
 using ColorConfig.WeakUITable;
 using static ColorConfig.ColConversions;
 using System.Data.SqlTypes;
+using ColorConfig.MenuUI.Objects;
 
 namespace ColorConfig
 {
-    public static class Manager
-    {
-        //Clipboard
-        public static string? Clipboard
-        {
-            get => GUIUtility.systemCopyBuffer; set => GUIUtility.systemCopyBuffer = value;
-        }
-    }
-    public static class SmallUtils
+    public static partial class SmallUtils
     {
         public static void HookMethod(this MethodInfo info, Delegate action)
         {
@@ -67,23 +60,18 @@ namespace ColorConfig
             list.CopyTo(index + 1, result, index, list.Count - 1 - index);
             return [..result];
         }
-        public static T? ValueOrDefault<T>(this IList<T>? list, int index, T defaultValue) => (list != null && list.Count > index && index >= 0) ? list[index] : defaultValue;
+        public static T? ValueOrDefault<T>(this IList<T>? list, int index, T? defaultValue) => (list != null && list.Count > index && index >= 0) ? list[index] : defaultValue;
         public static T? ValueOrDefault<T>(this IList<T>? list, int index) => ValueOrDefault(list!, index, default);
 
         //Fixed Backtrack issues
         public static string[] FindFilePaths(string directoryName, string fileFormat = "", bool directories = false, bool includeAll = false) => [.. AssetManager.ListDirectory(directoryName, directories, includeAll).Where(x => x.EndsWith(fileFormat))];
 
         //For inputs
-        public static ExtraFixedMenuInput GetFixedExtraMenuInput()
-        {
-            bool ctrl = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl),
-                cpy = ctrl && Input.GetKey(KeyCode.C),
-                pst = ctrl && Input.GetKey(KeyCode.V);
-            return new(cpy, pst);
-        }
+      
+        //use this since normal ui input is stingy af and doesnt check for grab, spec, and map is strangely another mystery bind in UiInput
         public static Player.InputPackage FixedPlayerUIInput(int playerNumber)
         {
-            //fixes grab not working
+            //made this cuz rw ui input is stingy af
             playerNumber = (Custom.rainWorld.processManager == null || !Custom.rainWorld.processManager.IsGameInMultiplayerContext()) && playerNumber < 0? 0 : playerNumber;
             if (playerNumber >= 0)
             {
@@ -129,37 +117,29 @@ namespace ColorConfig
 
         }
         //extra menu stuff
-        public static void UpdateExtraInterfaces(this object? obj, object? inputHolder)
-        {
-            (obj as IGetOwnInput)?.GetOwnInput(inputHolder?.GetInputExtras()?.pMInput ?? new(), inputHolder?.GetInputExtras()?.lastPMInput ?? new());
-            (obj as ICopyPasteConfig)?.CopyPaste(inputHolder);
-        }
         public static InputExtras GetInputExtras(this object? obj) => obj != null ?ColorConfigMod.inputExtras.GetValue(obj, _ => new()) : new();
-        public static void GetOwnInput(this IGetOwnInput non_MouseInput, Player.InputPackage input, Player.InputPackage lastInput) => non_MouseInput?.TryGetInput(input, lastInput);
-        public static void CopyPaste(this ICopyPasteConfig copyPasteConfig, object? inputHolder)
+
+        public static void HelpPopulatePage(int listCount, int currentOffset, int perPage, Action<int> action)
         {
-            if (copyPasteConfig != null && copyPasteConfig.ShouldCopyPaste)
-            {
-                if (CopyShortcutPressed(inputHolder))
-                    copyPasteConfig.Clipboard = copyPasteConfig.Copy();
-                else if (PasteShortcutPressed(inputHolder))
-                    copyPasteConfig.Paste(copyPasteConfig.Clipboard);
-            }
+            int num = currentOffset * perPage;
+            int max = Mathf.Min(listCount - num, perPage);
+            for (int i = 0; i < max; i++)
+                action(i + num);
         }
-        public static void ApplyPerPageList<T>(this IDoPerPage perPage, IList<T> list, Action<T, int> action)
+        public static int TryGoToNextPage(int listCount, int currentOffset, int objectsPerPage = 1)
         {
-            if (perPage == null) return;
-            int num = perPage.CurrentOffset * perPage.PerPage;
-            while (num < list?.Count && num < (perPage.CurrentOffset + 1) * perPage.PerPage)
-            {
-                action?.Invoke(list[num], num);
-                num++;
-            }
+            int newOffset = currentOffset + 1;
+            if (listCount == 0 || newOffset > (listCount - 1) / objectsPerPage)
+                return 0;
+            return newOffset;
         }
-        public static int NextPageLoopListPerPage<T>(this IDoPerPage perPage, IList<T> list) => (list == null || list.Count == 0 || perPage.CurrentOffset + 1 > (list.Count - 1) / perPage.PerPage) ? 0 : perPage.CurrentOffset + 1;
-        public static int PrevPageLoopListPerPage<T>(this IDoPerPage perPage, IList<T> list) => (perPage.CurrentOffset - 1 < 0 ? list?.Count > 0 ? (list.Count - 1) / perPage.PerPage : 0 : perPage.CurrentOffset - 1);
-        public static int NextPageLoopList<T>(this ICanTurnPages turnPages, IList<T> list) => list == null || list.Count == 0 || turnPages.CurrentOffset + 1 >= list.Count ? 0 : turnPages.CurrentOffset + 1;
-        public static int PrevPageLoopList<T>(this ICanTurnPages turnPages, IList<T> list) => turnPages.CurrentOffset - 1 < 0 ? list?.Count > 0 ? list.Count - 1 : 0 : turnPages.CurrentOffset - 1;
+        public static int TryGoToPrevPage(int listCount, int currentOffset, int objectsPerPage = 1)
+        {
+            int newOffset = currentOffset - 1;
+            if (newOffset < 0)
+                return Mathf.Max((listCount - 1) / objectsPerPage, 0);
+            return newOffset;
+        }
 
         //menu stuff
         public static void ClearMenuObjectList(this MenuObject? container, MenuObject[] list)
@@ -235,20 +215,6 @@ namespace ColorConfig
             }
             return color;
         }
-        public static void SaveHSLString_Menu_String(this Menu.Menu menu, SlugcatStats.Name id, int bodyIndex, string newHSL)
-        {
-            if (!menu.manager.rainWorld.progression.miscProgressionData.colorChoices.ContainsKey(id.value))
-            {
-                ColorConfigMod.DebugWarning("Failed to save color choices due to slugcat not saved");
-                return;
-            }
-            if (menu.manager.rainWorld.progression.miscProgressionData.colorChoices[id.value].Count <= bodyIndex)
-            {
-                ColorConfigMod.DebugWarning("Failed to save color choices due to index being more than body count!");
-                return;
-            }
-            menu.manager.rainWorld.progression.miscProgressionData.colorChoices[id.value][bodyIndex] = newHSL;
-        }
         public static void SaveHSLString_Menu_Vector3(this Menu.Menu menu, SlugcatStats.Name id, int bodyIndex, Vector3 newHSL)
         {
             if (!menu.manager.rainWorld.progression.miscProgressionData.colorChoices.ContainsKey(id.value))
@@ -278,7 +244,7 @@ namespace ColorConfig
         public static void TryFixAllColorChoices(this Menu.Menu menu)
         {
             if (menu?.manager?.rainWorld?.progression?.miscProgressionData?.colorChoices == null) return;
-            List<string> slugcats = new(menu.manager.rainWorld.progression.miscProgressionData.colorChoices.Keys);
+            List<string> slugcats = [.. menu.manager.rainWorld.progression.miscProgressionData.colorChoices.Keys];
             for (int i = 0; i < slugcats.Count; i++)
                 menu.manager.rainWorld.progression.miscProgressionData.colorChoices[slugcats[i]] = [.. menu.manager.rainWorld.progression.miscProgressionData.colorChoices[slugcats[i]].Select(ParseHSLString).Select(x => SetHSLSaveString(new(x.x == 1 ? 0 : x.x, x.y, x.z)))];
         }
@@ -313,7 +279,8 @@ namespace ColorConfig
         }
         public static void UpdateInterfaceColor(this SlugcatSelectMenu.CustomColorInterface ccI, int bodyIndex)
         {
-            if (ccI?.bodyColors != null && bodyIndex <= ccI.bodyColors.Length) ccI.bodyColors[bodyIndex].color = HSL2RGB(ccI.menu.MenuHSL(ccI.slugcatID, bodyIndex));
+            if (ccI?.bodyColors != null && bodyIndex <= ccI.bodyColors.Length) 
+                ccI.bodyColors[bodyIndex].color = HSL2RGB(ccI.menu.MenuHSL(ccI.slugcatID, bodyIndex));
         }
         public static void SaveHSLString_Story(this SlugcatSelectMenu ssM, Vector3 newHSL) => ssM.SaveHSLString_Story_String(SetHSLSaveString(newHSL));
         public static void SaveHSLString_Story_Int(this SlugcatSelectMenu ssM, int bodyIndex, Vector3 newHSL) => ssM.SaveHSLString_Story_Int_String(bodyIndex, SetHSLSaveString(newHSL));
@@ -330,20 +297,11 @@ namespace ColorConfig
         public static void AddSSMSliderIDGroups(List<SliderIDGroup> IDGroups, bool shouldRemoveHSL)
         {
             if (!shouldRemoveHSL)
-            {
-                IDGroups.Add(new([MMFEnums.SliderID.Hue, MMFEnums.SliderID.Saturation, MMFEnums.SliderID.Lightness], MenuToolObj.HSLNames,
-                    MenuToolObj.HueOOShowInt, MenuToolObj.hueOOMultipler, MenuToolObj.HueOOSigns));
-            }
+                IDGroups.Add(new([MMFEnums.SliderID.Hue, MMFEnums.SliderID.Saturation, MMFEnums.SliderID.Lightness], MenuToolObj.HSLNames, MenuToolObj.HueOOShowInt, MenuToolObj.hueOOMultipler, MenuToolObj.HueOOSigns));
             if (ModOptions.Instance.EnableRGBSliders.Value)
-            {
-                IDGroups.Add(new([MenuToolObj.RedRGB, MenuToolObj.GreenRGB, MenuToolObj.BlueRGB],
-                    MenuToolObj.RGBNames, MenuToolObj.RGBShowInt, MenuToolObj.rgbMultipler));
-            }
+                IDGroups.Add(new(MenuToolObj.RGBSliderIDS, MenuToolObj.RGBNames, MenuToolObj.RGBShowInt, MenuToolObj.rgbMultipler));
             if (ModOptions.Instance.EnableHSVSliders.Value)
-            {
-                IDGroups.Add(new([MenuToolObj.HueHSV, MenuToolObj.SatHSV, MenuToolObj.ValHSV],
-                   MenuToolObj.HSVNames, MenuToolObj.HueOOShowInt, MenuToolObj.hueOOMultipler, MenuToolObj.HueOOSigns));
-            }
+                IDGroups.Add(new(MenuToolObj.HSVSliderIDS, MenuToolObj.HSVNames, MenuToolObj.HueOOShowInt, MenuToolObj.hueOOMultipler, MenuToolObj.HueOOSigns));
         }
       
         public static Vector2 BaseScreenColorInterfacePos(this ProcessManager manager) => new(1000 - (1366 - manager.rainWorld.options.ScreenSize.x) / 2, manager.rainWorld.options.ScreenSize.y - 100);
@@ -377,259 +335,8 @@ namespace ColorConfig
         //expedition stuff
         public static ExtraExpeditionInterfaces GetExtraEXPInterface(this object charSelectPage) => ColorConfigMod.extraEXPInterfaces.GetValue(charSelectPage, (_) => new());
         public static SlugcatStats.Name ExpeditionSlugcat() => Expedition.ExpeditionData.slugcatPlayer;
-        public static void AddEXPSliderIDGroups(List<SliderIDGroup> IDGroups, bool shouldRemoveHSL) //remix is required
-        {
-            if (!shouldRemoveHSL)
-            {
-                IDGroups.Add(new([MMFEnums.SliderID.Hue, MMFEnums.SliderID.Saturation, MMFEnums.SliderID.Lightness], MenuToolObj.HSLNames,
-                    MenuToolObj.HueOOShowInt, MenuToolObj.hueOOMultipler, MenuToolObj.HueOOSigns));
-            }
-            AddSSMSliderIDGroups(IDGroups, true);
-        }
         public static void TrySaveExpeditionColorsToCustomColors(this Menu.Menu menu, SlugcatStats.Name name) => PlayerGraphics.customColors = !ModManager.JollyCoop && menu.IsCustomColorEnabled(name) && ModOptions.Instance.EnableExpeditionColorConfig.Value ? [.. menu.MenuHSLs(name).Select(ColConversions.HSL2RGB)] : null;
 
-        //opcolor picker stuff
-        public static ColorPickerExtras GetColorPickerExtras(this OpColorPicker cPicker) => ColorConfigMod.extraColorPickerStuff.GetValue(cPicker, (_) => new(cPicker));
-        public static bool IsHSVMode(this OpColorPicker cPicker) => cPicker.GetColorPickerExtras()._IsHSVMode;
-        public static bool IsDiffHSLHSVMode(this OpColorPicker cPicker) => cPicker.GetColorPickerExtras().IsDifferentHSVHSLMode;
-        public static void SwitchHSLCustomMode(this OpColorPicker self)
-        {
-            //switch hsl, hsl_diff, hsv, hsv_diff if all except betterColorPickers. else hsl, hsv_diff. hsl, hsv if only HSV mode. hsl, hsl_diff if only diff
-            // so if diff is on, it just switches, hsv switches if diff is off or _diff is on
-            // allow change if ex: diff is off but _diff is still on
-            self.GetColorPickerExtras().IsHSVMode = (!ModOptions.PickerHSVMode && !self.GetColorPickerExtras().IsHSVMode) || (!ModOptions.Instance.EnableBetterOPColorPicker.Value && ModOptions.Instance.EnableDiffOpColorPickerHSL.Value && !self.GetColorPickerExtras().IsDifferentHSVHSLMode) ? self.GetColorPickerExtras().IsHSVMode : !self.GetColorPickerExtras().IsHSVMode;
-            self.GetColorPickerExtras().IsDifferentHSVHSLMode = !ModOptions.Instance.EnableDiffOpColorPickerHSL.Value && !self.GetColorPickerExtras().IsDifferentHSVHSLMode ? self.GetColorPickerExtras().IsDifferentHSVHSLMode : !self.GetColorPickerExtras().IsDifferentHSVHSLMode;
-            self.PlaySound(SoundID.MENU_Player_Join_Game);
-        }
-        public static bool OpColorPickerPatchMiniFocusHSLColor(this OpColorPicker self, int hueSat, int satLit, int litHue, bool squareTexture)
-        {
-            Vector3Int hsvHSL = self.GetHSVOrHSL100();
-            int h = hsvHSL.x, s = hsvHSL.y, l = hsvHSL.z;
-            if (self.IsDiffHSLHSVMode()) //HueSat becomes SatLit and Lit becomes Hue
-            {
-                hueSat = squareTexture ? Mathf.RoundToInt(Mathf.Clamp(self.MousePos.x - 10f, 0f, 100f)) : hueSat;
-                litHue = litHue > 99 ? 99 : litHue;
-                h = squareTexture ? h : litHue;
-                s = squareTexture ? hueSat : s;
-                l = squareTexture ? satLit : l;
-                self._lblR.text = h.ToString();
-                self._lblG.text = s.ToString();
-                self._lblB.text = l.ToString();
-                self._cdis1.color = self.ColorPicker2RGB().Invoke(new(h / 100f, s / 100f, l/ 100f));
-                self.SetHSLORHSV100(h, s, l);
-                return true;
-            }
-            else if (self.IsHSVMode())
-            {
-                h = squareTexture ? hueSat : h;
-                s = squareTexture ? satLit : s;
-                l = squareTexture ? l : litHue;
-                self._cdis1.color = self.ColorPicker2RGB().Invoke(new(h / 100f, s / 100f, l/ 100f));
-            }
-            return false;
-        }
-        public static void OpColorPickerPatchHoverMouseHSLColor(this OpColorPicker self, int hueSat, int satLit, int litHue, bool squareTexture)
-        {
-            Vector3Int hsvHSL = self.GetHSVOrHSL100();
-            int h = hsvHSL.x, s = hsvHSL.y, l = hsvHSL.z;
-            if (self.IsDiffHSLHSVMode()) //When mouse just hovers over texture
-            {
-                hueSat = squareTexture ? Mathf.RoundToInt(Mathf.Clamp(self.MousePos.x - 10f, 0f, 100f)) : hueSat;
-                litHue = litHue > 99 ? 99 : litHue;
-                h = squareTexture ? h : litHue;
-                s = squareTexture ? hueSat : s;
-                l = squareTexture ? satLit : l;
-                self._lblR.text = h.ToString();
-                self._lblG.text = s.ToString();
-                self._lblB.text = l.ToString();
-                self._cdis1.color = self.ColorPicker2RGB().Invoke(new(h / 100f, s / 100f, l / 100f));
-            }
-            else if (self.IsHSVMode())
-            {
-                h = squareTexture ? hueSat : h;
-                s = squareTexture ? satLit : s;
-                l = squareTexture ? l : litHue;
-                self._cdis1.color = self.ColorPicker2RGB().Invoke(new(h / 100f, s / 100f, l / 100f));
-            }
-        }
-        public static Func<Vector3, Color> ColorPicker2RGB(this OpColorPicker cPicker) => cPicker.IsHSVMode() ? ColConversions.HSV2RGB : ColConversions.HSL2RGB;
-        public static void RefreshTexture(this OpColorPicker cPicker)
-        {
-            if (cPicker != null)
-            {
-                cPicker._RecalculateTexture();
-                if (cPicker._mode == OpColorPicker.PickerMode.RGB)
-                {
-                    cPicker._ftxr1.SetTexture(cPicker._ttre1);
-                    cPicker._ftxr2.SetTexture(cPicker._ttre2);
-                    cPicker._ftxr3.SetTexture(cPicker._ttre3);
-                }
-                else if (cPicker._mode == OpColorPicker.PickerMode.HSL)
-                {
-                    cPicker._ftxr1.SetTexture(cPicker._ttre1);
-                    cPicker._ftxr2.SetTexture(cPicker._ttre2);
-                }
-                else
-                {
-                    cPicker._ftxr2.SetPosition(OpColorPicker._GetPICenterPos(cPicker._pi));
-                }
-            }
-        }
-        public static Vector3Int GetHSL(this OpColorPicker cPicker)
-        {
-            return new(cPicker._h, cPicker._s, cPicker._l);
-        }
-        public static Vector3 GetHSL01(this OpColorPicker cPicker) => new(cPicker._h / 100f, cPicker._s / 100f, cPicker._l / 100f);
-        public static Vector3Int GetHSVOrHSL100(this OpColorPicker cPicker) => cPicker.GetHSL();
-        public static Vector3 GetHSVOrHSL01(this OpColorPicker cPicker) => cPicker.GetHSL01();
-        public static Vector3 ParseGetHSLORHSV01(this OpColorPicker cPicker, float? h, float? s, float? l)
-        {
-            Vector3 hsvHSL = cPicker.GetHSVOrHSL01();
-            return new(h.GetValueOrDefault(hsvHSL.x), s.GetValueOrDefault(hsvHSL.y), l.GetValueOrDefault(hsvHSL.z));
-        }
-        public static Vector3 ParseGetHSLORHSV100(this OpColorPicker cPicker, float? h, float? s, float? l)
-        {
-            Vector3 hsvHSL = cPicker.GetHSVOrHSL100();
-            return new(h.GetValueOrDefault(hsvHSL.x), s.GetValueOrDefault(hsvHSL.y), l.GetValueOrDefault(hsvHSL.z));
-        }
-        public static void SetHSLORHSV100(this OpColorPicker cPicker, float h, float s, float l)
-        {
-            Vector3 hsvHSL100 = cPicker.GetHSVOrHSL100();
-            if (h != hsvHSL100.x || s != hsvHSL100.y || l != hsvHSL100.z)
-            {
-                cPicker.SetDirectHSLORHSV100(Mathf.RoundToInt(h), Mathf.RoundToInt(s), Mathf.RoundToInt(l));
-                cPicker.PlaySound(SoundID.MENU_Scroll_Tick);
-                cPicker._HSLSetValue();
-            }
-        }
-        public static void SetDirectHSLORHSV100(this OpColorPicker cPicker, int h, int s, int l)
-        {
-            cPicker._h = h;
-            cPicker._s = s;
-            cPicker._l = l;
-        }
-        public static void SetHSLRGB(this OpColorPicker cPicker, int? o1, int? o2, int? o3, bool soundIfSame = true)
-        {
-            if (cPicker._mode == OpColorPicker.PickerMode.HSL)
-            {
-                if (o1?.Equals(cPicker._h) == false || o2?.Equals(cPicker._s) == false || o3?.Equals(cPicker._l) == false)
-                {
-                    cPicker._h = o1 ?? cPicker._h;
-                    cPicker._s  = o2 ?? cPicker._s;
-                    cPicker._l = o3 ?? cPicker._l;
-                    cPicker.CPickerSetValue();
-                    return;
-                }
-            }
-            if (cPicker._mode == OpColorPicker.PickerMode.RGB)
-            {
-                if (o1?.Equals(cPicker._r) == false || o2?.Equals(cPicker._g) == false || o3?.Equals(cPicker._b) == false)
-                {
-                    cPicker._r = o1 ?? cPicker._r;
-                    cPicker._g = o2 ?? cPicker._g;
-                    cPicker._b = o3 ?? cPicker._b;
-                    cPicker.CPickerSetValue();
-                    return;
-                }
-            }
-            if (soundIfSame)
-            {
-                cPicker.PlaySound(SoundID.MENU_Greyed_Out_Button_Clicked);
-            }
-        }
-        public static bool IsFLabelHovered(this FLabel label, Vector2 mousePosition)
-        {
-            if (label != null)
-            {
-                Vector2 pos = label.GetPosition(), startRange = new(pos.x + label.textRect.x, pos.y + label.textRect.y),
-                    endRange = startRange + new Vector2(label.textRect.width, label.textRect.height);
-                return mousePosition.x >= startRange.x && mousePosition.y >= startRange.y && mousePosition.x <= endRange.x && mousePosition.y <= endRange.y;
-            }
-            return false;
-        }
-        public static bool IfCPickerNumberHovered(this OpColorPicker cPicker, out int ooo)
-        {
-            ooo = -1;
-            if (cPicker != null)
-            {
-                ooo = cPicker._lblR.IsFLabelHovered(cPicker.MousePos) ? 0 :
-                    cPicker._lblG.IsFLabelHovered(cPicker.MousePos) ? 1 :
-                    cPicker._lblB.IsFLabelHovered(cPicker.MousePos) ? 2 : ooo;
-            }
-            return ooo > -1;
-        }
-        public static void CopyNumberCPicker(this OpColorPicker cPicker, int oOO)
-        {
-            if (cPicker == null) return;
-
-            switch (oOO)
-            {
-                case 0:
-                    Manager.Clipboard = cPicker._lblR.text;
-                    break;
-                case 1:
-                    Manager.Clipboard = cPicker._lblG.text;
-                    break;
-                case 2:
-                    Manager.Clipboard = cPicker._lblB.text;
-                    break;
-            }
-            cPicker.PlaySound(SoundID.MENU_Player_Join_Game);
-        }
-        public static void PasteNumberCPicker(this OpColorPicker cPicker, int oOO)
-        {
-            if (cPicker == null) return;
-            string? newValue = Manager.Clipboard?.Trim();
-            if (float.TryParse(newValue, NumberStyles.Integer | NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out float result))
-            {
-                int toPut = Mathf.Clamp(Mathf.RoundToInt(result), 0, 100);
-                cPicker.SetHSLRGB(oOO == 0 ? toPut : null, oOO == 1 ? toPut : null, oOO == 2 ? toPut : null);
-                return;
-            }
-            cPicker.PlaySound(SoundID.MENU_Greyed_Out_Button_Clicked);
-        }
-        public static void CPickerSetValue(this OpColorPicker cPicker)
-        {
-            if (cPicker == null) return;
-            if (cPicker._mode == OpColorPicker.PickerMode.RGB) cPicker._RGBSetValue();
-            if (cPicker._mode == OpColorPicker.PickerMode.HSL) cPicker._HSLSetValue();
-            cPicker.PlaySound(SoundID.MENU_Player_Join_Game);
-
-        }
-        public static void CopyHexCPicker(this OpColorPicker cPicker)
-        {
-            if (cPicker == null) return;
-            Manager.Clipboard = cPicker.value;
-            cPicker.PlaySound(SoundID.MENU_Player_Join_Game);
-
-        }
-        public static void PasteHexCPicker(this OpColorPicker cPicker)
-        {
-            if (cPicker == null) return;
-            string? newValue = Manager.Clipboard?.Trim()?.TrimStart('#');
-            if (newValue != null && MenuColorEffect.IsStringHexColor(newValue) && !newValue.IsHexCodesSame(cPicker.value))
-            {
-                cPicker.value = newValue.Substring(0, 6).ToUpper();
-                cPicker.PlaySound(SoundID.MENU_Switch_Page_In);
-                return;
-            }
-            cPicker.PlaySound(SoundID.MENU_Greyed_Out_Button_Clicked);
-
-
-        }
-        public static void ApplyHSLArrow(Texture2D texture, int oOO, Color arrowColor, bool moveUpDown, int positioner = 0)
-        {
-            for (int pointer = Math.Max(0, oOO - 4); pointer <= Math.Min(100, oOO + 4); pointer++)
-            {
-                int middleOfoOO = 5 - Math.Abs(oOO - pointer), start = positioner > 50 ? 0 : 101 - middleOfoOO, control = positioner > 50 ? middleOfoOO : 101;
-                for (int widthOrHeight = start; widthOrHeight < control; widthOrHeight++)
-                {
-                    int desiredX = moveUpDown ? widthOrHeight : pointer, desiredY = moveUpDown ? pointer : widthOrHeight;
-                    texture.SetPixel(desiredX, desiredY, arrowColor);
-                }
-
-            }
-        }
         //slider wonkiness (Assuming one slider is dragged only)
         public static Vector3 FixNonHueSliderWonkiness(Vector3 pendingHSL, Vector3 currentHSL)
         {
@@ -649,11 +356,6 @@ namespace ColorConfig
             slider.floatValue = slider.floatValue;
         }
 
-        //copypaste
-        public static bool CopyShortcutPressed(this object? inputHolder) => inputHolder != null && inputHolder.GetInputExtras().femInput.cpy && !inputHolder.GetInputExtras().lastFemInput.cpy;
-        public static bool PasteShortcutPressed(this object? inputHolder) => inputHolder != null && inputHolder.GetInputExtras().femInput.pste && !inputHolder.GetInputExtras().lastFemInput.pste;
-
-
         //basic conversion stuff
         public static string SetHSLSaveString(Vector3 hsl) => $"{hsl.x},{hsl.y},{hsl.z}";
         public static bool IsHexCodesSame(this string value, string newvalue, bool rGBA = false, bool capSensitive = false)
@@ -670,7 +372,7 @@ namespace ColorConfig
         public static Color Vector32RGB(this Vector3 vector) => new(vector.x, vector.y, vector.z);
         public static Vector3 RGB2Vector3(this Color color) => new(color.r, color.g, color.b);
         public static Vector3 HSL2Vector3(this HSLColor hSLColor) => new(hSLColor.hue, hSLColor.saturation, hSLColor.lightness);
-        public static Vector3 RXHSl2Vector3(this RXColorHSL colorHSL) => colorHSL == null? default : new(colorHSL.h, colorHSL.s, colorHSL.l);
+        public static Vector3 RXHSl2Vector3(this RXColorHSL colorHSL) =>  new(colorHSL.h, colorHSL.s, colorHSL.l);
         public static HSLColor Vector32HSL(this Vector3 hsl) => new(hsl.x, hsl.y, hsl.z);
         public static RXColorHSL Vector32RXHSL(this Vector3 hsl) => new(hsl.x, hsl.y, hsl.z);
       
@@ -709,48 +411,5 @@ namespace ColorConfig
                 Mathf.Clamp(value.y, min.y, max.y), Mathf.Clamp(value.z, min.z, max.z));
         }
     }
-    public static class ColConversions
-    {
-        public static Vector3 HSL1002HSV100(Vector3 hsl)
-        {
-            float val = hsl.z + hsl.y * (Mathf.Min(hsl.z, 100 - hsl.z) / 100);
-            float sat = val == 0 ? 0 : 200 * (1 - (hsl.z / val));
-            return new(hsl.x, sat, val);
-        }
-        public static Vector3 HSV1002HSL100(Vector3 hsv)
-        {
-            float lit = hsv.z * (1 - (hsv.y / 200));
-            float sat = lit == 0 || lit == 100 ? 0 : (hsv.z - lit) / (Mathf.Min(lit, 100 - lit) / 100);
-            return new(hsv.x, sat, lit);
-        }
-        public static Color HSV2RGB(Vector3 hsv) => Color.HSVToRGB(hsv.x == 1 ? 0 : hsv.x, hsv.y, hsv.z);
-        public static Color HSL2RGB(Vector3 hsl) => Custom.HSL2RGB(hsl.x == 1 ? 0 : hsl.x, hsl.y, hsl.z);
-        public static Vector3 HSV2HSL(Vector3 hsv)
-        {
-            float lit = hsv.z * (1 - (hsv.y / 2));
-            float sat = lit == 0 || lit == 1 ? 0 : (hsv.z - lit) / (Mathf.Min(lit, 1 - lit));
-            return new(hsv.x, sat, lit);
-        }
-        public static Vector3 RGB2HSV(Color rgb)
-        {
-            Color.RGBToHSV(rgb, out float h, out float s, out float v);
-            return new(h, s, v);
-        }
-        public static Vector3 HSL2HSV(Vector3 hsl)
-        {
-            float val = hsl.z + hsl.y * Mathf.Min(hsl.z, 1 - hsl.z);
-            float sat = val == 0 ? 0 : 2 * 1 * (1 - (hsl.z / val));
-            return new(hsl.x, sat, val);
-        }
-        public static string RGB2Hex(this Color rgb) => ColorUtility.ToHtmlStringRGB(rgb);
-        public static string HSV2Hex(Vector3 hsv) => HSV2RGB(hsv).RGB2Hex();
-        public static string HSL2Hex(Vector3 hsl) => HSL2RGB(hsl).RGB2Hex();
 
-    }
-    public enum CustomColorModel
-    {
-        RGB,
-        HSL,
-        HSV,
-    }
 }
