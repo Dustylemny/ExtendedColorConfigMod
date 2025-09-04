@@ -44,8 +44,9 @@ namespace ColorConfig.Hooks
             orig(self);
             if (!self._ctor) return;
             if (self._mode != OpColorPicker.PickerMode.HSL) return;
-            Vector3 hslHSV = self.GetHSVOrHSL01();
-            self._cdis0.color = self.IsHSVMode() ? ColConversions.HSV2RGB(hslHSV) : 
+            ColorPickerExtras extras = self.GetColorPickerExtras();
+            Vector3 hslHSV = extras.GetHSLorHSV01;
+            self._cdis0.color = extras.IsHSVMode ? ColConversions.HSV2RGB(hslHSV) : 
                     ModOptions.Instance.EnableBetterOPColorPicker.Value && self._h == 100 ? ColConversions.HSL2RGB(hslHSV) : self._cdis0.color;
         }
         public static void On_OPColorPicker_ctor(OnOpColorPicker.orig_ctor orig, OpColorPicker self, Configurable<Color> config, Vector2 pos)
@@ -54,7 +55,7 @@ namespace ColorConfig.Hooks
             extras._IsHSVMode = ModOptions.PickerHSVMode;
             extras._IsDifferentHSLHSVMode = ModOptions.Instance.EnableDiffOpColorPickerHSL.Value;
             orig(self, config, pos);
-            self._lblHSL.text = self.IsHSVMode() ? "HSV" : self._lblHSL.text;
+            self._lblHSL.text = extras.IsHSVMode ? "HSV" : self._lblHSL.text;
         }
         public static void On_OPColorPicker_RecalculateTexture(OnOpColorPicker.orig__RecalculateTexture orig, OpColorPicker self)
         {
@@ -147,13 +148,9 @@ namespace ColorConfig.Hooks
             if (!self.CurrentlyFocusableMouse && !self.MenuMouseMode) return;
             ColorPickerExtras extras = self.GetColorPickerExtras();
             if (self.Menu.CopyShortcutPressed())
-            {
                 extras.Copy();
-            }
             if (self.Menu.PasteShortcutPressed())
-            {
                 extras.Paste();
-            }
             //insert copy paste for hex and numbers
 
         }
@@ -168,10 +165,7 @@ namespace ColorConfig.Hooks
                 cursor.EmitDelegate(delegate (Color hslCol, OpColorPicker self)
                 {
                     ColorPickerExtras extras = self.GetColorPickerExtras();
-                    return extras.IsHSVMode ? 
-                    ColConversions.HSV2RGB(extras.GetHSV) : 
-                    ModOptions.Instance.EnableBetterOPColorPicker.Value && self._h == 100 ? 
-                    ColConversions.HSL2RGB(extras.GetHSL) : hslCol;
+                    return extras.IsHSVMode ? ColConversions.HSV2RGB(extras.GetHSV) : ModOptions.Instance.EnableBetterOPColorPicker.Value && self._h == 100 ? ColConversions.HSL2RGB(extras.GetHSL) : hslCol;
                 });
                 ColorConfigMod.DebugLog("Sucessfully patched RGB Color to take hsv or not turn grey!");
             }
