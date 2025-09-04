@@ -8,3 +8,6 @@
 /ColorConfig/obj
 /ColorConfig/ColorConfigHooksOBSOLETE.cs
 /ColorConfig/bin/Debug/net48
+/.vs
+/ColorConfig/.vs/ProjectEvaluation
+/ColorConfig/Properties
