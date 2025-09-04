@@ -40,9 +40,6 @@
     <Reference Include="Rain Meadow">
       <HintPath>..\..\..\..\Downloads\RM\PUBLIC-Rain-Meadow.dll</HintPath>
     </Reference>
-    <Reference Include="Rain Meadow">
-      <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\workshop\content\312520\3388224007\plugins\Rain Meadow.dll</HintPath>
-    </Reference>
     <Reference Include="UnityEngine">
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Rain World\RainWorld_Data\Managed\UnityEngine.dll</HintPath>
     </Reference>
