@@ -64,7 +64,7 @@ namespace ColorConfig.MenuUI.Objects
 
             valueLabel.label.color = color;
             if (ModOptions.ShowVisual && oOOPages != null)
-                valueLabel.text = string.Join(",", oOOPages.SliderVisualValues ?? []);
+                valueLabel.text = $"({string.Join(",", oOOPages.SliderVisualValues ?? [])})";
             else
                 valueLabel.text = "";
         }
