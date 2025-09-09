@@ -88,9 +88,9 @@ namespace ColorConfig.MenuUI.Objects
         }
         public void LoadNewHSLSlugcat(List<Vector3> slugcatHSLColos/*, SlugcatStats.Name name*/) => currentRGBs = [.. slugcatHSLColos.Select(ColConversions.HSL2RGB)];
         public void LoadNewHSLStringSlugcat(List<string> slugcatHSLColos/*, SlugcatStats.Name name*/) => currentRGBs = [.. slugcatHSLColos.Select(x => ColConversions.HSL2RGB(SmallUtils.ParseHSLString(x)))];
-        public override void GrafUpdate(float timeStacker)
+        public override void Update()
         {
-            base.GrafUpdate(timeStacker);
+            base.Update();
             for (int i = 0; i < illus.Length; i++)
                 illus[i].color = currentRGBs.ValueOrDefault(i, Color.white);
         }

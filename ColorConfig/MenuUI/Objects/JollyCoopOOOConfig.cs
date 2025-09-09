@@ -11,26 +11,11 @@ namespace ColorConfig.MenuUI.Objects
 {
     public class JollyCoopOOOConfig : PositionedMenuObject
     {
-        public static void AddJollySliderIDGroups(List<SliderIDGroup> IDGroups, ColorChangeDialog.ColorSlider colSlider, bool shouldRemoveHSL)//int bodyPart, bool shouldRemoveHSL)
-        {
-            if (!shouldRemoveHSL)
-                IDGroups.Add(new([colSlider.Hue, colSlider.Sat, colSlider.Lit], MenuToolObj.HSLNames,
-                  MenuToolObj.HueOOShowInt, MenuToolObj.hueOOMultipler, MenuToolObj.HueOOSigns));
-
-            if (ModOptions.EnableJollyRGBSliders)
-                IDGroups.Add(new(MenuToolObj.RGBSliderIDS, MenuToolObj.RGBNames, MenuToolObj.RGBShowInt, MenuToolObj.rgbMultipler));
-            if (ModOptions.Instance.EnableHSVSliders.Value)
-                IDGroups.Add(new(MenuToolObj.HSVSliderIDS, MenuToolObj.HSVNames, MenuToolObj.HueOOShowInt, MenuToolObj.hueOOMultipler, MenuToolObj.HueOOSigns));
-
-        }
-        /* no need to make new ones if we just find colslider by slider owner
-        public static Slider.SliderID[] RegisterOOOSliderGroups(string colorSpaceName, string[] oOONames, int bodyPart)
-        {
-            return [ new($"DUSTY_{bodyPart}_{colorSpaceName}_{oOONames.GetValueOrDefault(0, "1")}", true), 
-                new($"DUSTY_{bodyPart}_{colorSpaceName}_{oOONames.GetValueOrDefault(1, "2")}", true),
-                new($"DUSTY_{bodyPart}_{colorSpaceName}_{oOONames.GetValueOrDefault(2, "3")}", true),
-            ];
-        }*/
+        public Color color = MenuColorEffect.rgbMediumGrey;
+        public MenuLabel valueLabel;
+        public SliderPages oOOPages;
+        //public List<SliderIDGroup> oOOIDGroups; removed that since instead of parsing num, we get slider owner instead
+        public HexTypeBox? hexInterface;
         public JollyCoopOOOConfig(Menu.Menu menu, ColorChangeDialog.ColorSlider owner, /*int bodyPartNum,*/ bool removeHSL = false, bool addHexInterface = true) : base(menu, owner, owner.pos)
         {
             //no need bodynum
@@ -58,9 +43,11 @@ namespace ColorConfig.MenuUI.Objects
             }
             this.SafeAddSubObjects(oOOPages, valueLabel, hexInterface);
         }
-        public override void GrafUpdate(float timeStacker)
+        public override void Update()
         {
-            base.GrafUpdate(timeStacker);
+            base.Update();
+            if (owner is ColorChangeDialog.ColorSlider colSlider)
+                hexInterface?.SaveNewHSL(colSlider.hslColor.HSL2Vector3());
 
             valueLabel.label.color = color;
             if (ModOptions.ShowVisual && oOOPages != null)
@@ -68,17 +55,26 @@ namespace ColorConfig.MenuUI.Objects
             else
                 valueLabel.text = "";
         }
-        public override void Update()
+        public static void AddJollySliderIDGroups(List<SliderIDGroup> IDGroups, ColorChangeDialog.ColorSlider colSlider, bool shouldRemoveHSL)//int bodyPart, bool shouldRemoveHSL)
         {
-            base.Update();
-            if (owner is ColorChangeDialog.ColorSlider colSlider)
-                hexInterface?.SaveNewHSL(colSlider.hslColor.HSL2Vector3());
-        }
+            if (!shouldRemoveHSL)
+                IDGroups.Add(new([colSlider.Hue, colSlider.Sat, colSlider.Lit], MenuToolObj.HSLNames,
+                  MenuToolObj.HueOOShowInt, MenuToolObj.hueOOMultipler, MenuToolObj.HueOOSigns));
 
-        public Color color = MenuColorEffect.rgbMediumGrey;
-        public MenuLabel valueLabel;
-        public SliderPages oOOPages;
-        //public List<SliderIDGroup> oOOIDGroups; removed that since instead of parsing num, we get slider owner instead
-        public HexTypeBox? hexInterface;
+            if (ModOptions.EnableJollyRGBSliders)
+                IDGroups.Add(new(MenuToolObj.RGBSliderIDS, MenuToolObj.RGBNames, MenuToolObj.RGBShowInt, MenuToolObj.rgbMultipler));
+            if (ModOptions.Instance.EnableHSVSliders.Value)
+                IDGroups.Add(new(MenuToolObj.HSVSliderIDS, MenuToolObj.HSVNames, MenuToolObj.HueOOShowInt, MenuToolObj.hueOOMultipler, MenuToolObj.HueOOSigns));
+
+        }
+        /* no need to make new ones if we just find colslider by slider owner
+        public static Slider.SliderID[] RegisterOOOSliderGroups(string colorSpaceName, string[] oOONames, int bodyPart)
+        {
+            return [ new($"DUSTY_{bodyPart}_{colorSpaceName}_{oOONames.GetValueOrDefault(0, "1")}", true), 
+                new($"DUSTY_{bodyPart}_{colorSpaceName}_{oOONames.GetValueOrDefault(1, "2")}", true),
+                new($"DUSTY_{bodyPart}_{colorSpaceName}_{oOONames.GetValueOrDefault(2, "3")}", true),
+            ];
+        }*/
+
     }
 }
