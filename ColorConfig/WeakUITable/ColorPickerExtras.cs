@@ -11,20 +11,24 @@ using UnityEngine;
 
 namespace ColorConfig.WeakUITable
 {
-    public class ColorPickerExtras
+    public class ColorPickerExtras(OpColorPicker cPicker)
     {
+        public OpColorPicker cPicker = cPicker;
+        public bool _IsHSVMode, _IsDifferentHSLHSVMode;
+        //todo: use seperate hsv;
+        public int h, s, v, lastH, lastS, lastL;
         public bool IsHSVMode
         {
             get => _IsHSVMode;
             set
             {
-                if (_IsHSVMode != value)
-                {
-                    _IsHSVMode = value;
-                    ChangeHSLHSVMode(_IsHSVMode);
-                    cPicker.RefreshTexture();
-                    RefreshText();
-                }
+                if (_IsHSVMode == value) return;
+
+                ChangeHSLHSVMode(value);
+                _IsHSVMode = value;
+                cPicker.RefreshTexture();
+                RefreshText();
+
             }
         }
         public bool IsDifferentHSVHSLMode
@@ -46,10 +50,7 @@ namespace ColorConfig.WeakUITable
         public Vector3 GetHSLorHSV01 => new(cPicker._h * 0.01f, cPicker._s * 0.01f, cPicker._l * 0.01f);
         public Vector3Int GetHSLorHSV100 => new(cPicker._h, cPicker._s, cPicker._l);
         public string? Clipboard { get => ClipboardManager.Clipboard; set => ClipboardManager.Clipboard = value; }
-        public ColorPickerExtras(OpColorPicker cPicker)
-        {
-            this.cPicker = cPicker;
-        }
+        public Color HSLorHSV2RGB(Vector3 hslorHSV)  => IsHSVMode ? ColConversions.HSV2RGB(hslorHSV) : ColConversions.HSL2RGB(hslorHSV);
         public void Copy()
         {
             if (cPicker._MouseOverHex())
@@ -66,21 +67,21 @@ namespace ColorConfig.WeakUITable
         }
         public void Paste()
         {
-            if (Clipboard == null) return;
             if (cPicker._MouseOverHex())
             {
-                string newValue = Clipboard.Trim().TrimStart('#');
-                if (MenuColorEffect.IsStringHexColor(newValue) && !newValue.IsHexCodesSame(cPicker.value))
+                string? newValue = Clipboard?.Trim().TrimStart('#');
+                if (newValue != null && MenuColorEffect.IsStringHexColor(newValue) && !newValue.IsHexCodesSame(cPicker.value))
                 {
                     cPicker.value = newValue.Substring(0, 6).ToUpper();
                     cPicker.PlaySound(SoundID.MENU_Switch_Page_In);
                 }
-                else cPicker.PlaySound(SoundID.MENU_Greyed_Out_Button_Clicked);
+                else 
+                    cPicker.PlaySound(SoundID.MENU_Greyed_Out_Button_Clicked);
                 return;
             }
             if (ModOptions.Instance.CopyPasteForColorPickerNumbers.Value && cPicker.IfCPickerNumberHovered(out int oOO))
             {
-                string? newValue = ClipboardManager.Clipboard?.Trim();
+                string? newValue = Clipboard?.Trim();
                 if (float.TryParse(newValue, NumberStyles.Integer | NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out float result))
                 {
                     int toPut = Mathf.Clamp(Mathf.RoundToInt(result), 0, 100);
@@ -97,7 +98,7 @@ namespace ColorConfig.WeakUITable
         }
         public void ChangeHSLHSV(bool changeToHSV)
         {
-            Vector3 hslHSV100 = ((Func<Vector3, Vector3>)(changeToHSV ? ColConversions.HSL1002HSV100 : ColConversions.HSV1002HSL100)).Invoke(cPicker.GetHSL());
+            Vector3 hslHSV100 = ((Func<Vector3, Vector3>)(changeToHSV ? ColConversions.HSL1002HSV100 : ColConversions.HSV1002HSL100)).Invoke(GetHSLorHSV100);
             cPicker._h = Mathf.RoundToInt(hslHSV100.x);
             cPicker._s = Mathf.RoundToInt(hslHSV100.y);
             cPicker._l = Mathf.RoundToInt(hslHSV100.z);
@@ -106,7 +107,7 @@ namespace ColorConfig.WeakUITable
         {
             if (cPicker != null && cPicker._mode != OpColorPicker.PickerMode.Palette)
             {
-                Vector3Int hsvHSL = cPicker.GetHSVOrHSL100();
+                Vector3Int hsvHSL = GetHSLorHSV100;
                 cPicker._lblR.text = (cPicker._mode == OpColorPicker.PickerMode.RGB ? cPicker._r : hsvHSL.x).ToString();
                 cPicker._lblG.text = (cPicker._mode == OpColorPicker.PickerMode.RGB ? cPicker._g : hsvHSL.y).ToString();
                 cPicker._lblB.text = (cPicker._mode == OpColorPicker.PickerMode.RGB ? cPicker._b : hsvHSL.z).ToString();
@@ -117,9 +118,5 @@ namespace ColorConfig.WeakUITable
             lastH = cPicker._h; lastS = cPicker._s; lastL = cPicker._l;
         }
 
-        public OpColorPicker cPicker;
-        public bool _IsHSVMode, _IsDifferentHSLHSVMode;
-        //todo: use seperate hsv;
-        public int h, s, v, lastH, lastS, lastL;
     }
 }

@@ -1,10 +1,11 @@
-﻿using System;
+﻿using ColorConfig.MenuUI.Objects;
+using JollyCoop.JollyMenu;
+using Menu;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Menu;
-using JollyCoop.JollyMenu;
 
 namespace ColorConfig.Hooks
 {
@@ -17,7 +18,8 @@ namespace ColorConfig.Hooks
                 On.JollyCoop.JollyMenu.ColorChangeDialog.ValueOfSlider += On_ColorChangeDialog_ValueOfSlider;
                 On.JollyCoop.JollyMenu.ColorChangeDialog.SliderSetValue += On_ColorChangeDialog_SliderSetValue;
                 On.JollyCoop.JollyMenu.ColorChangeDialog.ColorSlider.ctor += On_ColorChangeDialog_ColorSlider_ctor;
-                On.JollyCoop.JollyMenu.ColorChangeDialog.ColorSlider.RemoveSprites += On_ColorChangeDialog_ColorSlider_RemoveSprites;
+                //On.JollyCoop.JollyMenu.ColorChangeDialog.ColorSlider.RemoveSprites += On_ColorChangeDialog_ColorSlider_RemoveSprites;
+                //colSlider will have extension as subobject so it will remove normally
                 ColorConfigMod.DebugLog("Sucessfully extended color interface for jolly coop menu!");
             }
             catch (Exception ex)
@@ -30,17 +32,10 @@ namespace ColorConfig.Hooks
             orig(self, menu, owner, pos, playerNumber, bodyPart, sliderTitle);
             self.GetExtraJollyInterface(/*bodyPart,*/ ModOptions.ShouldRemoveHSLSliders || ModOptions.FollowLukkyRGBSliders, ModOptions.Instance.EnableHexCodeTypers.Value);
         }
-        public static void On_ColorChangeDialog_ColorSlider_RemoveSprites(On.JollyCoop.JollyMenu.ColorChangeDialog.ColorSlider.orig_RemoveSprites orig, ColorChangeDialog.ColorSlider self)
-        {
-            orig(self);
-            self.RemoveExtraJollyInterface();
-        }
         public static float On_ColorChangeDialog_ValueOfSlider(On.JollyCoop.JollyMenu.ColorChangeDialog.orig_ValueOfSlider orig, ColorChangeDialog self, Slider slider)
         {
             if (ValueOfCustomSliders(slider, out float f))
-            {
                 return f;
-            }
             return orig(self, slider);
         }
         public static void On_ColorChangeDialog_SliderSetValue(On.JollyCoop.JollyMenu.ColorChangeDialog.orig_SliderSetValue orig, ColorChangeDialog self, Slider slider, float f)

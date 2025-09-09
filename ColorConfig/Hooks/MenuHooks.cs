@@ -31,7 +31,8 @@ namespace ColorConfig.Hooks
         public static void On_MenuObject_Update(On.Menu.MenuObject.orig_Update orig, MenuObject self)
         {
             orig(self);
-            bool isSelectable = self.menu?.FreezeMenuFunctions == false && self.page == self.menu.pages.ValueOrDefault(self.menu.currentPage);
+            //need to check owner if null for page cuz rw was stupid to not put a fucking null check
+            bool isSelectable = self.menu?.FreezeMenuFunctions == false && (self.owner != null && self.page == self.menu.pages.ValueOrDefault(self.menu.currentPage));
             if (self is ICopyPasteConfig cpyPstConfig && cpyPstConfig.ShouldCopyPaste && isSelectable)
             {
                 if (self.menu.CopyShortcutPressed())

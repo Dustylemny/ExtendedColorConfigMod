@@ -17,7 +17,8 @@ namespace ColorConfig.Hooks
     {
         public static void ExternalModHooks()
         {
-            if (ColorConfigMod.IsLukkyRGBColorSliderModOn) LukkyRGBModHooks.ApplyLukkyModHooks();
+            if (ColorConfigMod.IsLukkyRGBColorSliderModOn) 
+                LukkyRGBModHooks.ApplyLukkyModHooks();
             if (ColorConfigMod.IsRainMeadowOn)
             {
                 try

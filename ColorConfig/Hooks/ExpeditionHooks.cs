@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Menu;
 using ColorConfig.MenuUI;
+using ColorConfig.WeakUITable;
 
 namespace ColorConfig.Hooks
 {
@@ -39,14 +40,13 @@ namespace ColorConfig.Hooks
         public static void On_CharacterSelectPage_Ctor(On.Menu.CharacterSelectPage.orig_ctor orig, CharacterSelectPage self, Menu.Menu menu, MenuObject owner, Vector2 pos)
         {
             orig(self, menu, owner, pos);
-            SymbolButton? colorConfig = self.GetExtraEXPInterface().colorConfig;
-            if (!ModManager.JollyCoop && ModManager.MMF && colorConfig == null && ModOptions.Instance.EnableExpeditionColorConfig.Value)
+            ExtraExpeditionInterfaces eeI = self.GetExtraEXPInterface();
+            if (!ModManager.JollyCoop && ModManager.MMF && eeI.colorConfig == null && ModOptions.Instance.EnableExpeditionColorConfig.Value)
             {
-                colorConfig = new(menu, self, "colorconfig_slugcat_noncoloured", "DUSTY_EXPEDITION_CONFIG", new(440 + (self.jollyToggleConfigMenu?.pos == new Vector2(440, 550) ? -self.jollyToggleConfigMenu.size.x - 10 : 0), 550));
-                colorConfig.roundedRect.size = new(50, 50);
-                colorConfig.size = colorConfig.roundedRect.size;
-                self.subObjects.Add(colorConfig);
-                self.GetExtraEXPInterface().colorConfig = colorConfig;
+                eeI.colorConfig = new(menu, self, "colorconfig_slugcat_noncoloured", "DUSTY_EXPEDITION_CONFIG", new(440 + (self.jollyToggleConfigMenu?.pos == new Vector2(440, 550) ? -self.jollyToggleConfigMenu.size.x - 10 : 0), 550));
+                eeI.colorConfig.roundedRect.size = new(50, 50);
+                eeI.colorConfig.size = eeI.colorConfig.roundedRect.size;
+                self.subObjects.Add(eeI.colorConfig);
 
             }
         }
@@ -69,7 +69,7 @@ namespace ColorConfig.Hooks
                 self.menu.PlaySound(SoundID.MENU_Player_Join_Game);
                 self.menu.manager.ShowDialog(new ExpeditionColorDialog(self.menu, SmallUtils.ExpeditionSlugcat(), () =>
                 {
-                    self.GetExtraEXPInterface().colorConfig?.symbolSprite?.SetElementByName(GetColorEnabledSprite(self.menu));
+                    self.GetExtraEXPInterface().colorConfig!.symbolSprite.SetElementByName(GetColorEnabledSprite(self.menu));
                 }, ModOptions.Instance.EnableHexCodeTypers.Value, showSlugcatDisplay: ModOptions.Instance.EnableSlugcatDisplay.Value));
 
             }
@@ -79,8 +79,7 @@ namespace ColorConfig.Hooks
         {
             orig(self);
             SymbolButton? colorConfigBtn = self.GetExtraEXPInterface().colorConfig;
-            if (colorConfigBtn != null)
-                colorConfigBtn.symbolSprite.SetElementByName(GetColorEnabledSprite(self.menu));
+            colorConfigBtn?.symbolSprite.SetElementByName(GetColorEnabledSprite(self.menu));
         }
         public static void On_CharacterSelectPage_RemoveSprites(On.Menu.CharacterSelectPage.orig_RemoveSprites orig, CharacterSelectPage self)
         {

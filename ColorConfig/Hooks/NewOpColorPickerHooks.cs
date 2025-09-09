@@ -66,6 +66,7 @@ namespace ColorConfig.Hooks
                 orig(self);
                 return;
             }
+
             self._ttre1 = new(diff ? 101 : 100, 101)
             {
                 wrapMode = TextureWrapMode.Clamp,
@@ -76,8 +77,7 @@ namespace ColorConfig.Hooks
                 wrapMode = TextureWrapMode.Clamp,
                 filterMode = FilterMode.Point
             };
-            Func<Vector3, Color> hsvHSL2rgb = self.ColorPicker2RGB();
-            Vector3 hslHsv01 = self.GetHSVOrHSL01();
+            Vector3 hslHsv01 = extras.GetHSLorHSV01;
             for (int height = 0; height <= 100; height++)
             {
                 for (int width = 0; width < self._ttre1.width; width++)
@@ -86,18 +86,18 @@ namespace ColorConfig.Hooks
                     float h = diff ? hslHsv01.x : widthFloat, 
                         s = diff ? widthFloat : heightFloat, 
                         l = diff ? heightFloat : hslHsv01.y;
-                    self._ttre1.SetPixel(width, height, hsvHSL2rgb(new(h, s, l)));
+                    self._ttre1.SetPixel(width, height, extras.HSLorHSV2RGB(new(h, s, l)));
                     if (width < self._ttre2.width)
                     {
                         h = diff ? heightFloat : hslHsv01.x;
                         s = hslHsv01.y;
                         l = diff ? hslHsv01.z : heightFloat;
-                        self._ttre2.SetPixel(width, height, hsvHSL2rgb(new(h, s, l)));
+                        self._ttre2.SetPixel(width, height, extras.HSLorHSV2RGB(new(h, s, l)));
                     }
 
                 }
             }
-            Vector3Int hsvHSL = self.GetHSVOrHSL100();
+            Vector3Int hsvHSL = extras.GetHSLorHSV100;
             Color hueArrowCol = new(1 - self._r * 0.01f, 1f - self._g * 0.01f, 1f - self._b * 0.01f);
             hueArrowCol = Color.Lerp(Color.white, hueArrowCol, Mathf.Pow(Mathf.Abs(hueArrowCol.grayscale - 0.5f) * 2, 0.3f));
             SmallUtils.ApplyHSLArrow(self._ttre1, diff ? hsvHSL.y : hsvHSL.x, hueArrowCol, false, diff ? hsvHSL.z : hsvHSL.y); //first leftright arrow, diff -> s, h
